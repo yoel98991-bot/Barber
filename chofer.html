@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#F2F2F7">
+  <title>Entrega - AguaBol</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root { --tint: #0ea5e9; --bg: #F2F2F7; --card: #FFFFFF; --text-main: #000000; --text-muted: #8A8A8E; --green: #34C759; --red: #FF3B30; --radius: 20px; }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif; -webkit-tap-highlight-color: transparent; }
+    body { background: var(--bg); color: var(--text-main); display: flex; flex-direction: column; height: 100dvh; padding: 20px; padding-top: calc(env(safe-area-inset-top) + 20px); }
+    
+    .loading-screen, .error-screen, .success-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 24px; }
+    .hidden { display: none !important; }
+    
+    .header { text-align: center; margin-bottom: 24px; }
+    .badge { display: inline-block; background: rgba(14, 165, 233, 0.15); color: var(--tint); padding: 6px 12px; border-radius: 100px; font-weight: 700; font-size: 13px; text-transform: uppercase; margin-bottom: 12px; }
+    
+    .card { background: var(--card); border-radius: var(--radius); padding: 24px; box-shadow: 0 8px 24px rgba(0,0,0,0.04); margin-bottom: 20px; }
+    
+    .cliente-nombre { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 8px; }
+    .cliente-dir { font-size: 16px; color: var(--text-muted); line-height: 1.4; margin-bottom: 20px; background: #f8fafc; padding: 12px; border-radius: 12px; border: 1px solid #e2e8f0; }
+    
+    .items-box { border-top: 1px dashed var(--text-muted); padding-top: 20px; display: flex; justify-content: space-between; align-items: flex-end; }
+    .monto-total { font-size: 32px; font-weight: 800; color: var(--green); letter-spacing: -1px; }
+    
+    .btn { width: 100%; padding: 18px; border-radius: 16px; font-size: 18px; font-weight: 700; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 12px; transition: transform 0.1s; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .btn:active { transform: scale(0.96); }
+    
+    .btn-waze { background: #E5E5EA; color: #000000; box-shadow: none; }
+    .btn-gps { background: var(--tint); color: white; }
+    .btn-gps.active { background: #FF3B30; animation: pulse 2s infinite; }
+    .btn-entregar { background: var(--green); color: white; margin-top: 24px; }
+    
+    @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.4); } 70% { box-shadow: 0 0 0 15px rgba(255, 59, 48, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0); } }
+  </style>
+</head>
+<body>
+
+  <div id="pantalla-carga" class="loading-screen"><h2>⏳ Cargando pedido...</h2></div>
+  <div id="pantalla-error" class="error-screen hidden"><h2 style="font-size: 40px; margin-bottom:12px;">🚫</h2><h2>Enlace inválido o pedido no encontrado.</h2></div>
+  <div id="pantalla-exito" class="success-screen hidden"><h2 style="font-size: 60px; margin-bottom:12px;">✅</h2><h2 style="color: var(--green);">¡Entrega Registrada!</h2><p style="color: var(--text-muted); margin-top: 8px;">Ya puedes cerrar esta ventana.</p></div>
+
+  <div id="pantalla-app" class="hidden">
+    <div class="header"><div class="badge" id="lbl-estado">En Camino</div></div>
+
+    <div class="card">
+      <div class="cliente-nombre" id="lbl-nombre">Cargando...</div>
+      <div class="cliente-dir" id="lbl-direccion">Cargando dirección...</div>
+      
+      <div class="items-box">
+        <div>
+          <div style="font-size: 13px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">A entregar:</div>
+          <div id="lbl-detalle" style="font-size: 18px; font-weight: 700;">...</div>
+        </div>
+        <div style="text-align: right;">
+          <div style="font-size: 13px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Cobrar:</div>
+          <div class="monto-total" id="lbl-monto">Bs 0.00</div>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn btn-waze" id="btn-waze" onclick="abrirWaze()">📍 Abrir en Waze / Maps</button>
+    
+    <button class="btn btn-gps" id="btn-gps" onclick="toggleGPS()">
+      <span id="txt-gps">📡 Transmitir mi ubicación al cliente</span>
+    </button>
+
+    <button class="btn btn-entregar" onclick="marcarEntregado()">✅ Confirmar Entrega y Cobro</button>
+  </div>
+
+  <script>
+    // --- CREDENCIALES SUPABASE ---
+    const db = window.supabase.createClient('https://aiipxfssbnpfpefbbnwm.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFpaXB4ZnNzYm5wZnBlZmJibndtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3MDM2MzIsImV4cCI6MjA5NDI3OTYzMn0.CS_e43iE4ClLgqQULrm4mNm3ji71WQZQcdBNfg6lTHg');
+    
+    let pedidoID = null;
+    let pedidoActual = null;
+    let gpsWatchId = null;
+    let clienteLat = null;
+    let clienteLng = null;
+
+    async function inicializar() {
+      // 1. Obtener el ID del pedido de la URL (?id=...)
+      const parametros = new URLSearchParams(window.location.search);
+      pedidoID = parametros.get('id');
+
+      if (!pedidoID) {
+        document.getElementById('pantalla-carga').classList.add('hidden');
+        return document.getElementById('pantalla-error').classList.remove('hidden');
+      }
+
+      // 2. Buscar el pedido en Supabase
+      const { data: p, error } = await db.from('pedidos').select('*, clientes(*)').eq('id', pedidoID).single();
+      
+      if (error || !p) {
+        document.getElementById('pantalla-carga').classList.add('hidden');
+        return document.getElementById('pantalla-error').classList.remove('hidden');
+      }
+
+      if (p.estado === 'entregado' || p.estado === 'cancelado') {
+        document.getElementById('pantalla-carga').classList.add('hidden');
+        document.getElementById('pantalla-exito').innerHTML = `<h2 style="font-size: 50px;">📦</h2><h2>Este pedido ya fue procesado.</h2>`;
+        return document.getElementById('pantalla-exito').classList.remove('hidden');
+      }
+
+      pedidoActual = p;
+      mostrarDatos();
+    }
+
+    function mostrarDatos() {
+      const cli = pedidoActual.clientes;
+      document.getElementById('lbl-nombre').innerText = cli.nombre;
+      
+      // Limpiar y extraer dirección
+      let dirLimpia = cli.direccion || 'Sin dirección';
+      if (dirLimpia.includes('| GPS:')) {
+        const partes = dirLimpia.split('| GPS:');
+        dirLimpia = partes[0].trim();
+        const coords = partes[1].split(',');
+        clienteLat = coords[0].trim();
+        clienteLng = coords[1].trim();
+      }
+      document.getElementById('lbl-direccion').innerText = dirLimpia;
+
+      // Detalle
+      let detalle = [];
+      if (pedidoActual.items.mineral > 0) detalle.push(`${pedidoActual.items.mineral} Min`);
+      if (pedidoActual.items.saborizada > 0) detalle.push(`${pedidoActual.items.saborizada} Sab`);
+      document.getElementById('lbl-detalle').innerText = detalle.join(' + ');
+      
+      // Monto
+      document.getElementById('lbl-monto').innerText = `Bs ${pedidoActual.monto_total}`;
+
+      document.getElementById('pantalla-carga').classList.add('hidden');
+      document.getElementById('pantalla-app').classList.remove('hidden');
+    }
+
+    function abrirWaze() {
+      if (clienteLat && clienteLng) {
+        window.open(`https://waze.com/ul?ll=${clienteLat},${clienteLng}&navigate=yes`, '_blank');
+      } else {
+        const dir = document.getElementById('lbl-direccion').innerText;
+        window.open(`https://waze.com/ul?q=${encodeURIComponent(dir)}`, '_blank');
+      }
+    }
+
+    function toggleGPS() {
+      const btn = document.getElementById('btn-gps');
+      const txt = document.getElementById('txt-gps');
+
+      if (gpsWatchId) {
+        // Apagar GPS
+        navigator.geolocation.clearWatch(gpsWatchId);
+        gpsWatchId = null;
+        btn.classList.remove('active');
+        txt.innerText = '📡 Transmitir mi ubicación al cliente';
+      } else {
+        // Encender GPS
+        if (navigator.geolocation) {
+          btn.classList.add('active');
+          txt.innerText = '🛑 Detener Transmisión GPS';
+          
+          gpsWatchId = navigator.geolocation.watchPosition(async (pos) => {
+            const lat = pos.coords.latitude;
+            const lng = pos.coords.longitude;
+            // Magia: Subimos la ubicación a Supabase para que el cliente la vea moverse
+            await db.from('pedidos').update({ ubicacion_chofer: `${lat},${lng}` }).eq('id', pedidoID);
+          }, (err) => alert('Debes permitir el acceso al GPS para que el cliente te vea.'), { enableHighAccuracy: true });
+        } else {
+          alert('Tu teléfono no soporta GPS.');
+        }
+      }
+    }
+
+    async function marcarEntregado() {
+      if (confirm('¿Confirmas que entregaste los botellones y recibiste el pago?')) {
+        // 1. Apagamos GPS si estaba encendido
+        if (gpsWatchId) navigator.geolocation.clearWatch(gpsWatchId);
+        
+        // 2. Ocultar app y mostrar loading
+        document.getElementById('pantalla-app').classList.add('hidden');
+        document.getElementById('pantalla-carga').classList.remove('hidden');
+        document.querySelector('#pantalla-carga h2').innerText = "Cerrando orden...";
+
+        // 3. Actualizamos en Supabase
+        await db.from('pedidos').update({ estado: 'entregado' }).eq('id', pedidoID);
+        
+        // 4. Mostrar Éxito
+        document.getElementById('pantalla-carga').classList.add('hidden');
+        document.getElementById('pantalla-exito').classList.remove('hidden');
+      }
+    }
+
+    window.onload = inicializar;
+  </script>
+</body>
+</html>
