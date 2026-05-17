@@ -117,6 +117,9 @@
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFpaXB4ZnNzYm5wZnBlZmJibndtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3MDM2MzIsImV4cCI6MjA5NDI3OTYzMn0.CS_e43iE4ClLgqQULrm4mNm3ji71WQZQcdBNfg6lTHg';
     const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+    // 🔥 CANAL DE BROADCAST DIRECTO CON LA CENTRAL 🔥
+    const canalCentral = db.channel('operaciones_central');
+
     let pedidoID = null;
     let pedidoInfo = null;
     let clienteInfo = null;
@@ -243,29 +246,24 @@
       } catch (e) { console.log("Error al trazar ruta."); }
     }
 
-    // 6. INICIAR RECORRIDO (Notifica al cliente)
+    // 6. INICIAR RECORRIDO
     async function iniciarRecorrido() {
       if (!navigator.geolocation) return alert("Tu teléfono no soporta GPS.");
       
       const btn = document.getElementById('btn-iniciar');
       btn.innerHTML = "<span style='animation: spin 1s linear infinite; display: inline-block;'>⏳</span> Conectando GPS...";
       
-      // Activar el tracking del GPS
       gpsWatchId = navigator.geolocation.watchPosition(async (pos) => {
         choferLat = pos.coords.latitude;
         choferLng = pos.coords.longitude;
         
-        // Mover el icono en el mapa
         if (markChofer) markChofer.setLatLng([choferLat, choferLng]);
         
-        // 🚨 AQUÍ ESTÁ LA MAGIA: Al guardar esto en la Base de Datos, 
-        // la Edge Function detecta el cambio y le envía la notificación Push al cliente.
         await db.from('pedidos').update({ 
           estado: 'en_camino',
           ubicacion_chofer: `${choferLat},${choferLng}` 
         }).eq('id', pedidoID);
 
-        // Actualizar la ruta visualmente de vez en cuando
         if (destLat) trazarRuta();
 
       }, (err) => {
@@ -275,33 +273,50 @@
       activarModoEnRuta(true);
     }
 
-    // Cambiar la UI a modo "En Ruta"
     function activarModoEnRuta(mostrarAlerta) {
       document.getElementById('btn-iniciar').classList.add('hidden');
       document.getElementById('acciones-ruta').classList.remove('hidden');
       if (mostrarAlerta) alert("¡Ruta iniciada! El cliente acaba de recibir una notificación informando que vas en camino.");
     }
 
-    // 7. MARCAR ENTREGADO
+    // 7. MARCAR ENTREGADO (CON BROADCAST DIRECTO)
     async function marcarEntregado() {
       if (confirm('¿Confirmas que entregaste los botellones y recibiste el pago?')) {
         if (gpsWatchId) navigator.geolocation.clearWatch(gpsWatchId);
         mostrarPantalla('pantalla-carga');
         document.querySelector('#pantalla-carga h2').innerText = "Cerrando orden...";
         
+        // 1. Actualizar DB
         await db.from('pedidos').update({ estado: 'entregado' }).eq('id', pedidoID);
+        
+        // 2. Avisar directamente a la pantalla del admin
+        await canalCentral.send({
+          type: 'broadcast',
+          event: 'accion_chofer',
+          payload: { id: pedidoID, estado: 'entregado' }
+        });
+
         mostrarPantalla('pantalla-exito');
       }
     }
 
-    // 8. CANCELAR PEDIDO
+    // 8. CANCELAR PEDIDO (CON BROADCAST DIRECTO)
     async function cancelarPedido() {
       if (confirm('¿Estás seguro de cancelar este pedido? Se notificará al cliente y a la central.')) {
         if (gpsWatchId) navigator.geolocation.clearWatch(gpsWatchId);
         mostrarPantalla('pantalla-carga');
         document.querySelector('#pantalla-carga h2').innerText = "Cancelando...";
         
+        // 1. Actualizar DB
         await db.from('pedidos').update({ estado: 'cancelado' }).eq('id', pedidoID);
+        
+        // 2. Avisar directamente a la pantalla del admin
+        await canalCentral.send({
+          type: 'broadcast',
+          event: 'accion_chofer',
+          payload: { id: pedidoID, estado: 'cancelado' }
+        });
+
         mostrarPantalla('pantalla-cancelado');
       }
     }
