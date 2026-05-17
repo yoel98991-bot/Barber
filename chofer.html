@@ -16,12 +16,10 @@
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif; -webkit-tap-highlight-color: transparent; }
     body { background: var(--bg); color: var(--text-main); display: flex; flex-direction: column; height: 100dvh; }
     
-    /* ========== PANTALLAS ========== */
     .screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: none; flex-direction: column; background: var(--bg); z-index: 10; }
     .screen.active { display: flex; }
     .center-content { justify-content: center; align-items: center; text-align: center; padding: 24px; }
 
-    /* ========== MAPA Y PANEL ========== */
     #mapa-chofer { flex: 1; width: 100%; background: #E5E5EA; z-index: 1; }
     
     .panel-inferior { 
@@ -42,7 +40,6 @@
     .stat-label { font-size: 11px; color: var(--text-muted); font-weight: 700; text-transform: uppercase; }
     .stat-value { font-size: 18px; font-weight: 800; color: var(--text-main); margin-top: 2px; }
 
-    /* ========== BOTONES ========== */
     .btn-main { width: 100%; padding: 16px; border: none; border-radius: 14px; font-size: 17px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: transform 0.1s; color: white; }
     .btn-main:active { transform: scale(0.96); }
     .btn-start { background: linear-gradient(135deg, var(--tint), #0284c7); box-shadow: 0 4px 15px rgba(14, 165, 233, 0.3); }
@@ -50,7 +47,6 @@
     
     .btn-outline-red { width: 100%; padding: 14px; background: transparent; color: var(--red); border: 2px solid #fecaca; border-radius: 14px; font-weight: 700; font-size: 16px; margin-top: 12px; cursor: pointer; }
     
-    /* Ocultar elementos */
     .hidden { display: none !important; }
   </style>
 </head>
@@ -90,8 +86,10 @@
 
       <div id="acciones-ruta" class="hidden">
         <button class="btn-main btn-done" onclick="marcarEntregado()">✅ Marcar Entregado</button>
-        <button class="btn-outline-red" onclick="cancelarPedido()">❌ Cancelar Pedido</button>
       </div>
+      
+      <!-- AHORA SIEMPRE VISIBLE -->
+      <button class="btn-outline-red" onclick="cancelarPedido()">❌ Cancelar Pedido</button>
     </div>
   </div>
 
@@ -125,7 +123,6 @@
     let clienteInfo = null;
     let destLat = null, destLng = null;
     
-    // Variables del mapa
     let mapa = null;
     let markChofer = null;
     let markCliente = null;
@@ -133,7 +130,6 @@
     let gpsWatchId = null;
     let choferLat = null, choferLng = null;
 
-    // 1. INICIALIZAR APP
     async function init() {
       const urlParams = new URLSearchParams(window.location.search);
       pedidoID = urlParams.get('id');
@@ -143,7 +139,6 @@
         return;
       }
 
-      // Obtener datos del pedido y del cliente
       const { data, error } = await db.from('pedidos').select('*, clientes(*)').eq('id', pedidoID).single();
       
       if (error || !data) {
@@ -162,7 +157,6 @@
       renderInfo();
       extraerGPSCliente();
       
-      // Intentar obtener la ubicación inicial del chofer para dibujar el mapa
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(pos => {
           choferLat = pos.coords.latitude;
@@ -170,21 +164,18 @@
           iniciarMapa();
         }, err => {
           alert("Debes encender el GPS para ver la ruta.");
-          iniciarMapa(); // Inicia el mapa vacío si no da permisos
+          iniciarMapa();
         }, { enableHighAccuracy: true });
       }
 
-      // Si el pedido ya estaba "en_camino" (por si el chofer refresca la página)
       if (pedidoInfo.estado === 'en_camino') {
         activarModoEnRuta(false);
       }
     }
 
-    // 2. MOSTRAR DATOS EN LA INTERFAZ
     function renderInfo() {
       document.getElementById('cli-nombre').innerText = clienteInfo.nombre || 'Cliente';
       
-      // Limpiar dirección si tiene GPS pegado
       let dirLimpia = clienteInfo.direccion || 'Sin dirección';
       if (dirLimpia.includes('| GPS:')) dirLimpia = dirLimpia.split('| GPS:')[0].trim();
       document.getElementById('cli-direccion').innerText = dirLimpia;
@@ -194,7 +185,6 @@
       document.getElementById('cli-pedido').innerText = `📦 ${min} Min | ${sab} Sab (Cobrar: Bs ${pedidoInfo.monto_total})`;
     }
 
-    // 3. EXTRAER COORDENADAS DEL CLIENTE
     function extraerGPSCliente() {
       if (clienteInfo.direccion && clienteInfo.direccion.includes('| GPS:')) {
         const coords = clienteInfo.direccion.split('| GPS:')[1].trim().split(',');
@@ -203,32 +193,26 @@
       }
     }
 
-    // 4. DIBUJAR MAPA
     async function iniciarMapa() {
       mostrarPantalla('pantalla-app');
       
-      // Si no tenemos GPS del chofer, centramos en Valencia por defecto
       const startLat = choferLat || 10.1620;
       const startLng = choferLng || -67.9996;
 
       mapa = L.map('mapa-chofer', { zoomControl: false }).setView([startLat, startLng], 14);
       L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(mapa);
 
-      // Marcador del Chofer (Moto/Camión)
       const iconChofer = L.divIcon({ html: '🛵', className: '', iconSize: [30, 30], iconAnchor: [15, 15] });
       if (choferLat) markChofer = L.marker([choferLat, choferLng], { icon: iconChofer }).addTo(mapa);
 
-      // Marcador del Cliente
       if (destLat && destLng) {
         const iconCasa = L.divIcon({ html: '📍', className: '', iconSize: [30, 30], iconAnchor: [15, 30] });
         markCliente = L.marker([destLat, destLng], { icon: iconCasa }).addTo(mapa);
         
-        // Trazar la ruta inicial si tenemos ambos puntos
         if (choferLat) await trazarRuta();
       }
     }
 
-    // 5. TRAZAR RUTA CON OSRM
     async function trazarRuta() {
       try {
         const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${choferLng},${choferLat};${destLng},${destLat}?geometries=geojson`);
@@ -246,7 +230,6 @@
       } catch (e) { console.log("Error al trazar ruta."); }
     }
 
-    // 6. INICIAR RECORRIDO
     async function iniciarRecorrido() {
       if (!navigator.geolocation) return alert("Tu teléfono no soporta GPS.");
       
@@ -279,17 +262,14 @@
       if (mostrarAlerta) alert("¡Ruta iniciada! El cliente acaba de recibir una notificación informando que vas en camino.");
     }
 
-    // 7. MARCAR ENTREGADO (CON BROADCAST DIRECTO)
     async function marcarEntregado() {
       if (confirm('¿Confirmas que entregaste los botellones y recibiste el pago?')) {
         if (gpsWatchId) navigator.geolocation.clearWatch(gpsWatchId);
         mostrarPantalla('pantalla-carga');
         document.querySelector('#pantalla-carga h2').innerText = "Cerrando orden...";
         
-        // 1. Actualizar DB
         await db.from('pedidos').update({ estado: 'entregado' }).eq('id', pedidoID);
         
-        // 2. Avisar directamente a la pantalla del admin
         await canalCentral.send({
           type: 'broadcast',
           event: 'accion_chofer',
@@ -300,17 +280,14 @@
       }
     }
 
-    // 8. CANCELAR PEDIDO (CON BROADCAST DIRECTO)
     async function cancelarPedido() {
       if (confirm('¿Estás seguro de cancelar este pedido? Se notificará al cliente y a la central.')) {
         if (gpsWatchId) navigator.geolocation.clearWatch(gpsWatchId);
         mostrarPantalla('pantalla-carga');
         document.querySelector('#pantalla-carga h2').innerText = "Cancelando...";
         
-        // 1. Actualizar DB
         await db.from('pedidos').update({ estado: 'cancelado' }).eq('id', pedidoID);
         
-        // 2. Avisar directamente a la pantalla del admin
         await canalCentral.send({
           type: 'broadcast',
           event: 'accion_chofer',
@@ -321,7 +298,6 @@
       }
     }
 
-    // 9. WHATSAPP
     function abrirWhatsApp() {
       if (clienteInfo && clienteInfo.telefono) {
         const telLimpio = clienteInfo.telefono.replace(/\D/g, '');
@@ -331,7 +307,6 @@
       }
     }
 
-    // UTILIDAD
     function mostrarPantalla(id) {
       document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
       document.getElementById(id).classList.add('active');
