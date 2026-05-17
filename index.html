@@ -2,441 +2,1720 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="theme-color" content="#F2F2F7">
-  <title>AguaBol</title>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#f4f6f9">
+  <title>AguaBol - Centro de Operaciones</title>
   
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 
   <style>
-    /* ========== iOS SYSTEM VARIABLES ========== */
-    :root { 
+    /* ========== VARIABLES GLOBALES ========== */
+    :root {
+      --system-bg: #f4f6f9;
+      --card-bg: #ffffff;
+      --text-primary: #111827;
+      --text-secondary: #6b7280;
       --tint: #0ea5e9; 
-      --tint-hover: #0284c7; 
-      --bg: #F2F2F7; 
-      --card: #FFFFFF; 
-      --text-main: #000000; 
-      --text-muted: #8A8A8E; 
-      --separator: #C6C6C8;
-      --green: #34C759; 
-      --gold: #FF9500;
-      --radius-lg: 20px; 
-      --radius-md: 14px; 
+      --tint-hover: #0284c7;
+      --destructive: #ef4444;
+      --green: #10b981;
+      --warning: #f59e0b;
+      --separator: #f3f4f6;
+      --tab-bg: rgba(255, 255, 255, 0.9);
+      
+      --shadow-sm: 0 2px 4px rgba(0,0,0,0.02), 0 4px 12px rgba(0,0,0,0.04);
+      --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.05), 0 10px 20px -3px rgba(0,0,0,0.05);
+      --shadow-float: 0 10px 25px -5px rgba(14, 165, 233, 0.4);
+      
+      --radius-sm: 12px;
+      --radius-md: 20px;
     }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+      background: var(--system-bg); color: var(--text-primary);
+      -webkit-font-smoothing: antialiased; min-height: 100vh;
+      padding: env(safe-area-inset-top) 20px 0 20px;
+      padding-bottom: calc(env(safe-area-inset-bottom) + 100px);
+      position: relative; user-select: none;
+    }
+
+    /* ========== ANIMACIONES GLOBALES ========== */
+    .screen { display: none; padding-bottom: 20px; animation: fadeSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+    .screen.active { display: block; }
+    @keyframes fadeSlideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes fadeIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+    .spin { display: inline-block; animation: spin 1s linear infinite; }
+    @keyframes spin { 100% { transform: rotate(360deg); } }
+
+    /* ========== TOAST NOTIFICATIONS ========== */
+    .toast-container {
+      position: fixed; top: calc(env(safe-area-inset-top) + 10px); left: 50%; transform: translateX(-50%);
+      z-index: 99999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; width: 90%; max-width: 380px;
+    }
+    .toast {
+      background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(16px);
+      border: 1px solid rgba(0,0,0,0.05); box-shadow: 0 10px 30px rgba(0,0,0,0.08); border-radius: 100px;
+      padding: 12px 20px; display: flex; align-items: center; gap: 12px; color: var(--text-primary);
+      font-weight: 700; font-size: 14px; pointer-events: auto;
+      animation: toastSlideDown 0.4s forwards, toastFadeOut 0.4s ease 3s forwards;
+    }
+    .toast svg { width: 22px; height: 22px; flex-shrink: 0; }
+    .toast.success svg { color: var(--green); } .toast.error svg { color: var(--destructive); } .toast.info svg { color: var(--tint); }
+    @keyframes toastSlideDown { from { opacity: 0; transform: translateY(-30px) scale(0.9); } to { opacity: 1; transform: translateY(0) scale(1); } }
+    @keyframes toastFadeOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-10px); } }
+
+    .truncate { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    /* ========== ENCABEZADO Y TARJETAS ========== */
+    .nav-bar { display: flex; align-items: center; justify-content: space-between; padding: 16px 0 24px 0; }
+    .nav-title { font-size: 32px; font-weight: 800; letter-spacing: -0.8px; }
     
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif; -webkit-tap-highlight-color: transparent; -webkit-font-smoothing: antialiased; }
+    .card { background: var(--card-bg); border-radius: var(--radius-md); padding: 22px; margin-bottom: 24px; box-shadow: var(--shadow-sm); width: 100%; overflow: hidden; }
+    .section-title { font-size: 18px; font-weight: 700; margin: 0 0 12px 4px; display: flex; align-items: center; gap: 8px; }
+    .section-title svg { color: var(--tint); }
+
+    /* ========== FORMULARIOS ========== */
+    .date-picker-row, .input-row { display: flex; gap: 12px; align-items: flex-end; width: 100%; }
+    .picker-group, .input-group { flex: 1; min-width: 0; margin-bottom: 16px; width: 100%;}
+    .picker-group label, .input-group label { font-size: 11px; color: var(--text-secondary); font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; display: block; }
+    select, input { appearance: none; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: var(--radius-sm); padding: 12px 14px; font-size: 16px; font-family: inherit; color: var(--text-primary); width: 100%; font-weight: 600; outline: none; transition: all 0.2s ease; }
+    select:focus, input:focus { border-color: var(--tint); background: #ffffff; box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15); }
+    select { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="%2394a3b8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>'); background-repeat: no-repeat; background-position: right 14px center; padding-right: 40px; }
+
+    /* ========== BOTONES ========== */
+    .btn-primary { background: linear-gradient(135deg, var(--tint), #0284c7); color: white; border: none; border-radius: var(--radius-sm); padding: 14px 20px; font-weight: 700; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 12px rgba(14, 165, 233, 0.25); transition: transform 0.15s; width: 100%; }
+    .btn-primary:active { transform: scale(0.96); box-shadow: 0 2px 6px rgba(14, 165, 233, 0.2); }
+    .btn-outline { background: transparent; color: var(--text-primary); border: 2px solid #e2e8f0; border-radius: var(--radius-sm); padding: 14px 20px; font-weight: 700; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; }
+    .btn-small { padding: 6px 12px; font-size: 13px; background: #e0f2fe; color: var(--tint-hover); border-radius: 8px; border: none; font-weight: 700; cursor: pointer; }
+
+    /* ========== INICIO: FINANZAS Y GRÁFICOS ========== */
+    .total-card { background: linear-gradient(135deg, var(--text-primary), #1f2937); border-radius: var(--radius-md); padding: 24px; margin-bottom: 24px; box-shadow: var(--shadow-md); display: flex; flex-direction: column; gap: 12px; color: white; }
+    .financial-row { display: flex; justify-content: space-between; align-items: flex-end; }
+    .total-info { display: flex; flex-direction: column; }
+    .total-label { font-size: 13px; color: #9ca3af; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;}
+    .total-amount { font-size: 32px; font-weight: 800; letter-spacing: -0.5px;}
+    .utilidad-amount { font-size: 18px; font-weight: 700; color: var(--green); }
     
-    html, body { width: 100%; height: 100dvh; overflow: hidden; background: var(--bg); color: var(--text-main); overscroll-behavior-y: none; }
+    .chart-container { overflow-x: auto; white-space: nowrap; padding-bottom: 12px; scrollbar-width: none; }
+    .chart-container::-webkit-scrollbar { display: none; }
+    .bar-chart { display: flex; align-items: flex-end; gap: 8px; height: 140px; min-width: max-content; padding: 0 4px; }
+    .bar-item { display: flex; flex-direction: column; align-items: center; width: 28px; }
+    .bar { width: 22px; background: linear-gradient(to top, #38bdf8, var(--tint)); border-radius: 6px 6px 4px 4px; transition: height 0.8s cubic-bezier(0.34, 1.56, 0.64, 1); margin-bottom: 8px; box-shadow: 0 2px 8px rgba(14, 165, 233, 0.2); }
+    .bar-label { font-size: 12px; color: var(--text-secondary); font-weight: 600; }
+    .bar-label.hoy { color: var(--tint); font-weight: 800; background: #e0f2fe; padding: 2px 6px; border-radius: 8px; }
+
+    /* ========== OPERACIONES (FUSIÓN PEDIDOS Y CRM) ========== */
+    .segmented-control { display: flex; background: #e2e8f0; border-radius: 12px; padding: 4px; margin-bottom: 20px; }
+    .segment-btn { flex: 1; text-align: center; padding: 10px; font-size: 14px; font-weight: 700; color: var(--text-secondary); border-radius: 8px; cursor: pointer; transition: all 0.2s; }
+    .segment-btn.active { background: white; color: var(--text-primary); box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
     
-    /* ========== ANIMACIONES ========== */
-    @keyframes fadeSlideUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
-    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    /* Tarjetas de Pedidos en Vivo */
+    .pedido-card { background: white; border-radius: 16px; padding: 16px; margin-bottom: 16px; border-left: 4px solid var(--warning); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+    .pedido-card.en_camino { border-left-color: var(--tint); }
+    .pedido-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+    .pedido-nombre { font-size: 16px; font-weight: 800; }
+    .pedido-hora { font-size: 12px; color: var(--text-secondary); font-weight: 600; }
+    .pedido-items { background: #f8fafc; padding: 10px; border-radius: 8px; font-size: 14px; font-weight: 600; margin-bottom: 12px; display: flex; gap: 12px; flex-wrap: wrap;}
+    .pedido-acciones { display: flex; gap: 10px; flex-wrap: wrap;}
+    .btn-action { flex: 1; min-width: 120px; padding: 12px; border-radius: 10px; font-weight: 700; font-size: 14px; border: none; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 6px;}
+    .btn-aceptar { background: var(--tint); color: white; }
+    .btn-rechazar { background: #fee2e2; color: var(--destructive); }
 
-    /* ========== ONBOARDING ========== */
-    #auth-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 1000; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 24px; transition: opacity 0.4s ease, transform 0.4s ease; }
-    #auth-screen.hidden { opacity: 0; transform: scale(1.02); pointer-events: none; }
-    .auth-card { width: 100%; max-width: 360px; text-align: center; }
-    .auth-logo { margin-bottom: 24px; color: var(--tint); }
-    .auth-title { font-size: 32px; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 8px; }
-    .auth-subtitle { font-size: 16px; color: var(--text-muted); margin-bottom: 32px; line-height: 1.4; }
-    .auth-input { width: 100%; padding: 16px; background: white; border: none; border-radius: var(--radius-md); font-size: 17px; outline: none; margin-bottom: 16px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
-    .auth-input:focus { box-shadow: 0 0 0 2px var(--tint); }
-    #registro-campos { max-height: 0; opacity: 0; overflow: hidden; transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); }
-    #registro-campos.visible { max-height: 200px; opacity: 1; margin-top: 8px; }
-
-    /* ========== APP PRINCIPAL ========== */
-    #main-app { display: none; width: 100%; height: 100%; position: relative; }
-    #main-app.visible { display: block; animation: fadeIn 0.4s; }
+    /* Directorio CRM */
+    .search-box { background: var(--card-bg); border-radius: var(--radius-sm); padding: 12px 16px; margin-bottom: 20px; display: flex; align-items: center; gap: 12px; box-shadow: var(--shadow-sm); }
+    .search-input { border: none; padding: 0; background: transparent; margin: 0; }
+    .client-list { background: var(--card-bg); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); overflow: hidden; }
+    .client-row { display: flex; flex-direction: column; padding: 16px; border-bottom: 1px solid var(--separator); cursor: pointer; transition: background 0.2s;}
+    .client-row:active { background: #f8fafc; }
+    .client-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+    .client-avatar { width: 44px; height: 44px; border-radius: 22px; background: linear-gradient(135deg, var(--tint), #0284c7); color: white; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 800; flex-shrink: 0;}
+    .client-name { font-size: 16px; font-weight: 700; margin-bottom: 4px; display: flex; align-items: center; gap: 8px;}
+    .badge { font-size: 11px; font-weight: 700; padding: 4px 8px; border-radius: 6px; width: fit-content; display: flex; align-items: center; gap: 4px;}
+    .badge.mineral { background: #e0f2fe; color: #0369a1; } .badge.saborizada { background: #fef3c7; color: #b45309; } .badge.alert { background: #fee2e2; color: #b91c1c; } .badge.pending { background: #fef3c7; color: #b45309; border: 1px solid #fde68a;}
     
-    .glass-header { position: absolute; top: 0; left: 0; right: 0; z-index: 50; padding: calc(env(safe-area-inset-top) + 20px) 20px 15px 20px; background: rgba(242, 242, 247, 0.75); backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px); display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 0.5px solid rgba(0,0,0,0.05); }
-    .header-title { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
-    .header-subtitle { font-size: 13px; font-weight: 600; color: var(--tint); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
-    .avatar-mini { width: 38px; height: 38px; border-radius: 19px; background: #E5E5EA; color: var(--tint); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px; }
+    .client-actions-bar { display: flex; align-items: center; justify-content: space-between; padding-top: 12px; border-top: 1px dashed #e2e8f0; }
+    .action-icons { display: flex; gap: 12px; }
+    .action-btn { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; background: #f1f5f9; color: var(--text-secondary); cursor: pointer; transition: transform 0.2s; }
+    .action-btn:active { transform: scale(0.9); }
+    .action-btn.whatsapp { background: #dcfce7; color: #16a34a; } .action-btn.map { background: #dbeafe; color: #2563eb; }
 
-    .screen { display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: calc(env(safe-area-inset-top) + 100px) 20px calc(env(safe-area-inset-bottom) + 120px) 20px; }
-    .screen.active { display: block; animation: fadeSlideUp 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) forwards; }
+    /* ========== VENTAS MANUALES ========== */
+    .qty-group { display: flex; align-items: center; justify-content: space-between; background: #f8fafc; padding: 6px; border-radius: var(--radius-sm); border: 1px solid #e2e8f0; width: 100%;}
+    .qty-group input { text-align: center; font-size: 18px; border: none; padding: 0; background: transparent; margin: 0; font-weight: 700;}
+    .total-venta { font-size: 28px; font-weight: 800; text-align: right; margin: 10px 0; color: var(--text-primary); }
+    .btn-circle { width: 34px; height: 34px; flex-shrink: 0; border-radius: 17px; border: none; background: #e2e8f0; font-size: 20px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 
-    /* ========== LISTAS iOS ========== */
-    .ios-list { background: var(--card); border-radius: var(--radius-md); overflow: hidden; margin-bottom: 24px; }
-    .list-header { font-size: 13px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; margin: 0 0 8px 12px; letter-spacing: 0.5px; }
-    .list-row { display: flex; align-items: center; justify-content: space-between; padding: 16px; position: relative; }
-    .list-row:not(:last-child)::after { content: ''; position: absolute; bottom: 0; left: 60px; right: 0; height: 0.5px; background: var(--separator); }
-    .row-info { display: flex; align-items: center; gap: 14px; }
-    .row-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; }
-    .row-icon.min { background: var(--tint); } .row-icon.sab { background: var(--gold); }
-    .row-title { font-size: 17px; font-weight: 500; }
-    .row-desc { font-size: 14px; color: var(--text-muted); margin-top: 2px; }
-    .stepper { display: flex; align-items: center; background: #F2F2F7; border-radius: 8px; padding: 2px; }
-    .stepper-btn { width: 32px; height: 32px; border: none; background: transparent; font-size: 20px; color: var(--tint); font-weight: 400; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-    .stepper-val { font-size: 16px; font-weight: 600; width: 30px; text-align: center; }
+    /* ========== INVENTARIO ========== */
+    .stock-item { display: flex; align-items: center; justify-content: space-between; padding: 20px 0; border-bottom: 1px solid var(--separator); }
+    .stock-item:last-child { border-bottom: none; }
+    .stock-icon { width: 50px; height: 50px; border-radius: 16px; display: flex; align-items: center; justify-content: center; margin-right: 14px; flex-shrink: 0;}
+    .stock-icon.mineral { background: #e0f2fe; color: var(--tint); } .stock-icon.saborizada { background: #fef3c7; color: #d97706; }
+    .stock-qty { font-size: 20px; font-weight: 800; min-width: 36px; text-align: center; margin: 0 10px;}
 
-    /* ========== RASTREO LIVE ========== */
-    #tracking-card { display: none; background: var(--card); border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 24px; box-shadow: 0 10px 40px -10px rgba(0,0,0,0.1); }
-    #mapa-cliente { width: 100%; height: 320px; background: #E5E5EA; z-index: 1;}
-    .live-status { padding: 16px; background: rgba(255,255,255,0.9); backdrop-filter: blur(10px); position: absolute; top: 16px; left: 16px; right: 16px; border-radius: 100px; z-index: 10; display: flex; align-items: center; gap: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
-    .live-dot { width: 10px; height: 10px; background: var(--green); border-radius: 50%; animation: pulseLive 1.5s infinite; }
-    @keyframes pulseLive { 0% { box-shadow: 0 0 0 0 rgba(52, 199, 89, 0.6); } 70% { box-shadow: 0 0 0 8px rgba(52, 199, 89, 0); } 100% { box-shadow: 0 0 0 0 rgba(52, 199, 89, 0); } }
+    /* ========== PERFIL / AJUSTES ========== */
+    .profile-header { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 30px 20px; }
+    .avatar-wrapper { position: relative; width: 110px; height: 110px; margin-bottom: 16px; }
+    .avatar-img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; border: 4px solid white; box-shadow: 0 8px 24px rgba(14, 165, 233, 0.2); background: #e2e8f0;}
+    .avatar-edit-btn { position: absolute; bottom: 0; right: 0; width: 36px; height: 36px; background: var(--tint); border: 3px solid white; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; cursor: pointer; }
+    .settings-list { padding: 0; }
+    .setting-row { display: flex; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--separator); cursor: pointer; }
+    .setting-row:last-child { border-bottom: none; }
+    .setting-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-right: 14px; background: #f1f5f9; color: var(--tint); flex-shrink: 0; }
 
-    /* ========== TARJETA LEALTAD (ANIMACIÓN EN CASCADA) ========== */
-    .wallet-card { 
-      background: linear-gradient(135deg, #1C1C1E, #3A3A3C); 
-      border-radius: 20px; padding: 24px; color: white; position: relative; overflow: hidden; 
-      box-shadow: 0 15px 30px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.1); margin-top: 10px; 
-    }
-    .wallet-card::before {
-      content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
-      background: linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(255,255,255,0.05) 50%, rgba(255,255,255,0) 100%);
-      transform: rotate(30deg); pointer-events: none;
-    }
+    /* ========== MODALES GLOBALES ========== */
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.4); backdrop-filter: blur(8px); z-index: 200; align-items: flex-end; justify-content: center; opacity: 0; transition: opacity 0.3s; }
+    .modal-overlay.active { display: flex; opacity: 1; }
+    .modal-sheet { background: var(--card-bg); width: 100%; max-width: 500px; border-radius: 28px 28px 0 0; padding: 24px 24px calc(env(safe-area-inset-bottom) + 30px); transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); max-height: 85vh; overflow-y: auto; }
+    .modal-overlay.active .modal-sheet { transform: translateY(0); }
+    .modal-handle { width: 40px; height: 5px; background: #e2e8f0; border-radius: 3px; margin: 0 auto 24px; }
+    .modal-actions { display: flex; gap: 16px; margin-top: 24px; }
+    .btn-cancel { flex: 1; padding: 14px; border-radius: var(--radius-sm); font-weight: 700; background: #f1f5f9; border: none; cursor: pointer; font-size:16px;}
     
-    .stamps-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-top: 24px; position: relative; z-index: 2; }
+    .gastos-list, .client-history { margin-top: 24px; border-top: 1px solid var(--separator); padding-top: 20px; }
+    .gasto-item, .history-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--separator); font-size: 13px; }
+    .gasto-delete-btn { width: 30px; height: 30px; border-radius: 8px; border: none; background: #fee2e2; color: var(--destructive); display: flex; align-items: center; justify-content: center; cursor: pointer; }
+
+    /* ========== NUEVO: LISTA DE CHOFERES ========== */
+    .chofer-list { max-height: 50vh; overflow-y: auto; margin-top: 16px; }
+    .chofer-item { display: flex; justify-content: space-between; align-items: center; padding: 16px; border-bottom: 1px solid #f1f5f9; cursor: pointer; border-radius: 12px; margin-bottom: 8px; border: 1px solid transparent;}
+    .chofer-item:hover { background: #f8fafc; border-color: #e2e8f0; }
+
+    /* ========== MAPA NATIVO Y PANEL INFERIOR (UBER STYLE) ========== */
+    #pantallaRutaOverlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--system-bg); z-index: 9999; display: none; flex-direction: column; opacity: 0; transition: opacity 0.3s ease; }
+    #pantallaRutaOverlay.active { opacity: 1; }
+    #mapa-repartidor { flex: 1; width: 100%; z-index: 1; }
+    .leaflet-control-attribution { display: none !important; }
     
-    .stamp-spot { 
-      aspect-ratio: 1; border-radius: 50%; border: 1.5px solid rgba(255,255,255,0.15); 
-      display: flex; align-items: center; justify-content: center; 
-      background: rgba(0,0,0,0.2);
-    }
-
-    .stamp-spot.filled { 
-      background: rgba(0,0,0,0.2); 
-      border-color: rgba(255,255,255,0.15); 
-      animation: fillStamp 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; 
-    }
-    .stamp-spot.free.filled { 
-      background: rgba(0,0,0,0.2); 
-      border-color: var(--gold); 
-      animation: fillFreeStamp 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; 
-    }
-    .stamp-spot.free { border-color: var(--gold); }
-
-    @keyframes fillStamp {
-      0% { transform: scale(1); background: rgba(0,0,0,0.2); border-color: rgba(255,255,255,0.15); }
-      50% { transform: scale(1.15); background: var(--tint); border-color: var(--tint); box-shadow: 0 0 15px rgba(14, 165, 233, 0.6); }
-      100% { transform: scale(1); background: var(--tint); border-color: var(--tint); }
-    }
-    @keyframes fillFreeStamp {
-      0% { transform: scale(1); background: rgba(0,0,0,0.2); border-color: var(--gold); }
-      50% { transform: scale(1.15); background: var(--gold); border-color: var(--gold); box-shadow: 0 0 15px rgba(255, 149, 0, 0.6); }
-      100% { transform: scale(1); background: var(--gold); border-color: var(--gold); }
-    }
-
-    .stamp-spot svg { opacity: 0.2; transform: scale(0.8); }
-    .stamp-spot.filled svg { animation: popIcon 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+    .ruta-panel { position: absolute; bottom: 0; left: 0; right: 0; background: white; z-index: 10; border-radius: 28px 28px 0 0; padding: 24px 20px calc(env(safe-area-inset-bottom) + 20px); box-shadow: 0 -10px 30px rgba(0,0,0,0.15); transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+    #pantallaRutaOverlay.active .ruta-panel { transform: translateY(0); }
     
-    @keyframes popIcon {
-      0% { opacity: 0.2; transform: scale(0.5); }
-      100% { opacity: 1; transform: scale(1); }
-    }
+    .cliente-info-panel { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .lealtad-badge { background: #fef3c7; color: #d97706; padding: 6px 12px; border-radius: 100px; font-size: 12px; font-weight: 800; display: flex; align-items: center; gap: 4px; }
+    .panel-acciones { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; margin-bottom: 16px;}
 
-    /* ========== BOTONES Y NAVEGACIÓN ========== */
-    .btn-primary { width: 100%; padding: 16px; background: var(--tint); color: white; border: none; border-radius: var(--radius-md); font-size: 17px; font-weight: 600; cursor: pointer; transition: transform 0.1s; }
-    .btn-primary:active { transform: scale(0.96); opacity: 0.9; }
-    .btn-secondary { background: #E5E5EA; color: var(--tint); margin-top: 10px; }
-    .btn-destructive { background: #FF3B30; color: white; margin-top: 24px; }
-    .action-row { display: flex; align-items: center; justify-content: space-between; padding: 16px; background: white; border-radius: var(--radius-md); margin-bottom: 24px; }
-    
-    .checkout-bar { position: fixed; bottom: calc(env(safe-area-inset-bottom) + 80px); left: 20px; right: 20px; background: rgba(255,255,255,0.95); backdrop-filter: blur(20px); border-radius: var(--radius-lg); padding: 16px 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; z-index: 100; border: 0.5px solid rgba(0,0,0,0.05); }
-
-    .tab-bar { position: absolute; bottom: 0; left: 0; right: 0; background: rgba(242, 242, 247, 0.85); backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px); border-top: 0.5px solid rgba(0,0,0,0.1); display: flex; justify-content: space-around; height: calc(env(safe-area-inset-bottom) + 65px); padding-bottom: env(safe-area-inset-bottom); z-index: 200; }
-    .tab-item { flex: 1; display: flex; flex-direction: column; align-items: center; padding-top: 8px; color: var(--text-muted); font-size: 10px; font-weight: 500; cursor: pointer; transition: color 0.2s; }
-    .tab-item svg { margin-bottom: 4px; transition: transform 0.2s; }
+    /* ========== BARRA DE PESTAÑAS ========== */
+    .tab-bar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--tab-bg); backdrop-filter: blur(20px); border-top: 1px solid rgba(0,0,0,0.05); display: flex; justify-content: space-around; align-items: center; height: calc(env(safe-area-inset-bottom) + 70px); padding-bottom: env(safe-area-inset-bottom); z-index: 150; }
+    .tab-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #94a3b8; font-size: 11px; font-weight: 700; gap: 6px; padding: 10px 0; cursor: pointer; transition: color 0.2s;}
     .tab-item.active { color: var(--tint); }
-    .tab-item.active svg { transform: scale(1.1); }
-
-    #toast { display: none; position: fixed; top: calc(env(safe-area-inset-top) + 16px); left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); color: white; padding: 12px 24px; border-radius: 100px; font-weight: 500; font-size: 15px; z-index: 9999; align-items: center; gap: 8px; animation: fadeSlideUp 0.3s; }
+    
+    /* Botón Flotante */
+    .fab { display: none; position: fixed; bottom: calc(env(safe-area-inset-bottom) + 90px); right: 24px; width: 60px; height: 60px; border-radius: 30px; background: linear-gradient(135deg, var(--tint), #0284c7); color: white; align-items: center; justify-content: center; box-shadow: var(--shadow-float); cursor: pointer; border: none; z-index: 100; }
+    .fab.active-fab { display: flex; animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
   </style>
 </head>
 <body>
+  
+  <div id="toast-container" class="toast-container"></div>
+  
+  <audio id="notificacion-sound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" preload="auto"></audio>
 
-  <div id="toast"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> <span id="toast-msg">Mensaje</span></div>
-
-  <div id="auth-screen">
-    <div class="auth-card">
-      <div class="auth-logo"><svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/></svg></div>
-      <h1 class="auth-title">AguaBol</h1>
-      <p class="auth-subtitle" id="auth-instruction">Ingresa tu WhatsApp para acceder a tu historial y pedidos.</p>
-      <input type="tel" id="auth-phone" class="auth-input" placeholder="Número de teléfono">
-      <div id="registro-campos">
-        <input type="text" id="auth-name" class="auth-input" placeholder="Nombre completo">
-        <input type="text" id="auth-address" class="auth-input" placeholder="Dirección de entrega">
+  <div id="screen-inicio" class="screen active">
+    <div class="nav-bar"><span class="nav-title">Inicio</span></div>
+    
+    <div class="card">
+      <div class="date-picker-row">
+        <div class="picker-group">
+          <label>Mes</label>
+          <select id="mes" onchange="cargarMovimiento()">
+            <option value="0">Enero</option><option value="1">Febrero</option><option value="2">Marzo</option>
+            <option value="3">Abril</option><option value="4" selected>Mayo</option><option value="5">Junio</option>
+            <option value="6">Julio</option><option value="7">Agosto</option><option value="8">Septiembre</option>
+            <option value="9">Octubre</option><option value="10">Noviembre</option><option value="11">Diciembre</option>
+          </select>
+        </div>
+        <div class="picker-group">
+          <label>Año</label>
+          <input type="number" id="anio" value="2026" min="2020" max="2030" onchange="cargarMovimiento()">
+        </div>
       </div>
-      <button class="btn-primary" id="btn-auth" onclick="procesarAcceso()">Continuar</button>
+    </div>
+
+    <div class="total-card">
+      <div class="financial-row">
+        <div class="total-info">
+          <span class="total-label">Ingresos del mes</span>
+          <span class="total-amount" id="total-mes">Bs 0.00</span>
+        </div>
+      </div>
+      <div class="financial-row" style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 12px;">
+        <div class="total-info">
+          <span class="total-label" style="color:#d1d5db;">Utilidad Neta Estimada</span>
+          <span class="utilidad-amount" id="utilidad-neta">Bs 0.00</span>
+        </div>
+        <button class="btn-small" onclick="abrirModalGasto()" style="background: rgba(255,255,255,0.2); color:white;">+ Gasto</button>
+      </div>
+    </div>
+
+    <div class="section-title">
+      <div class="title-left">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="1" y="6" width="22" height="12" rx="2"/><rect x="5" y="2" width="2" height="6"/><rect x="17" y="2" width="2" height="6"/></svg>
+        Ventas diarias
+      </div>
+    </div>
+    <div class="card chart-container" id="chart-container-scroll">
+      <div class="bar-chart" id="grafico"></div>
     </div>
   </div>
 
-  <div id="main-app">
+  <div id="screen-operaciones" class="screen">
+    <div class="nav-bar"><span class="nav-title">Operaciones</span></div>
     
-    <div class="glass-header">
-      <div>
-        <div class="header-subtitle" id="header-fecha">Hacer Pedido</div>
-        <div class="header-title" id="header-titulo">Inicio</div>
+    <div class="segmented-control">
+      <div class="segment-btn active" id="btn-seg-pedidos" onclick="switchSubTab('pedidos')">
+        En Vivo 
+        <span id="badge-pedidos" style="background:var(--destructive); color:white; border-radius:10px; padding:2px 6px; font-size:11px; margin-left:4px; display:none;">0</span>
       </div>
-      <div class="avatar-mini" id="header-avatar">A</div>
+      <div class="segment-btn" id="btn-seg-directorio" onclick="switchSubTab('directorio')">Directorio CRM</div>
     </div>
 
-    <div id="screen-pedido" class="screen active">
-      <div id="tracking-card">
-        <div style="position: relative;">
-          <div class="live-status"><div class="live-dot"></div> <span style="font-size: 14px; font-weight: 600;">Repartidor en camino</span></div>
-          <div id="mapa-cliente"></div>
-        </div>
-        <div style="padding: 20px; display: flex; align-items: center; justify-content: space-between;">
-          <div><p style="font-size: 17px; font-weight: 600;">Tu pedido se acerca</p><p style="font-size: 14px; color: var(--text-muted); margin-top: 2px;">Mantente atento para recibirlo.</p></div>
-        </div>
+    <div id="sub-pedidos">
+      <div id="lista-pedidos-vacia" style="text-align: center; padding: 40px 20px; color: var(--text-secondary);">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:16px; opacity:0.5;"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        <p>No hay pedidos pendientes.</p>
+        <p style="font-size: 12px; margin-top:8px;">Escuchando portal de clientes...</p>
       </div>
-
-      <div id="catalogo-container">
-        <div class="list-header">CATÁLOGO DE PRODUCTOS</div>
-        <div class="ios-list">
-          <div class="list-row">
-            <div class="row-info"><div class="row-icon min"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/></svg></div><div><div class="row-title">Agua Mineral</div><div class="row-desc" id="p-min">Bs 8.50</div></div></div>
-            <div class="stepper"><button class="stepper-btn" onclick="cambiarCant('min',-1)">−</button><div class="stepper-val" id="qty-min">1</div><button class="stepper-btn" onclick="cambiarCant('min',1)">+</button></div>
-          </div>
-          <div class="list-row">
-            <div class="row-info"><div class="row-icon sab"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/></svg></div><div><div class="row-title">Saborizada</div><div class="row-desc" id="p-sab">Bs 10.00</div></div></div>
-            <div class="stepper"><button class="stepper-btn" onclick="cambiarCant('sab',-1)">−</button><div class="stepper-val" id="qty-sab">0</div><button class="stepper-btn" onclick="cambiarCant('sab',1)">+</button></div>
-          </div>
-        </div>
-
-        <div class="list-header">ENTREGAR EN</div>
-        <div class="action-row" style="align-items: flex-start; flex-direction: column; gap: 12px;">
-          <p id="resumen-direccion" style="font-size:15px; color:var(--text-muted); line-height: 1.4;"></p>
-          <button class="btn-primary btn-secondary" id="btn-gps" onclick="obtenerGPS()">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align: middle; margin-right: 6px;"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg> Compartir GPS exacto
-          </button>
-        </div>
-
-        <div class="checkout-bar" id="checkout-bar">
-          <div><div style="font-size:12px; font-weight:500; color:var(--text-muted);">Total estimado</div><div id="total-pago" style="font-size:22px; font-weight:700; color:var(--text-main);">Bs 8.50</div></div>
-          <button class="btn-primary" style="width: auto; padding: 14px 28px; margin: 0; box-shadow: 0 4px 12px rgba(14,165,233,0.3);" onclick="enviarPedido()">Confirmar</button>
-        </div>
-      </div>
+      <div id="lista-pedidos-container"></div>
     </div>
 
-    <div id="screen-lealtad" class="screen">
-      <div class="wallet-card">
-        <div style="display: flex; justify-content: space-between; align-items: center; position: relative; z-index: 2;">
-          <div><div style="font-size: 13px; opacity: 0.8; text-transform: uppercase; letter-spacing: 1px;">Club</div><div style="font-size: 24px; font-weight: 700;">AguaBol</div></div>
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-        </div>
-        <div class="stamps-grid" id="stamps-container"></div>
-        
-        <div id="status-lealtad" style="margin-top: 24px; text-align: center; font-size: 15px; font-weight: 500; background: rgba(255,255,255,0.1); padding: 12px; border-radius: 12px; position: relative; z-index: 2; transition: all 0.3s ease;">Cargando...</div>
+    <div id="sub-directorio" style="display: none;">
+      <div class="search-box">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" class="search-input" placeholder="Buscar cliente..." id="searchInput" oninput="renderClientList()">
       </div>
-      <p style="text-align: center; font-size: 13px; color: var(--text-muted); margin-top: 16px;">Acumula 10 compras y el próximo botellón corre por nuestra cuenta.</p>
+      <div class="client-list" id="clientListContainer"></div>
     </div>
-
-    <div id="screen-perfil" class="screen">
-      <div class="list-header">DATOS PERSONALES</div>
-      <div class="ios-list" style="margin-bottom: 12px;">
-        <div class="list-row"><input type="text" id="perfil-nombre" class="auth-input" style="margin:0; padding:0; background:transparent; box-shadow:none; font-size:17px;"></div>
-        <div class="list-row"><input type="text" id="perfil-direccion" class="auth-input" style="margin:0; padding:0; background:transparent; box-shadow:none; font-size:17px;"></div>
-      </div>
-      <button class="btn-primary btn-secondary" onclick="actualizarPerfil()">Guardar Cambios</button>
-      <button class="btn-primary btn-destructive" onclick="cerrarSesion()">Cerrar Sesión</button>
-      <div style="text-align: center; margin-top: 40px; font-size: 12px; color: var(--text-muted);">AguaBol v2.0<br>Desarrollado para iOS</div>
-    </div>
-
-    <div class="tab-bar">
-      <div class="tab-item active" onclick="switchTab('pedido', 'Inicio')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> Inicio</div>
-      <div class="tab-item" onclick="switchTab('lealtad', 'Regalo')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 12v10H4V12"/><path d="M2 7h20v5H2z"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg> Club</div>
-      <div class="tab-item" onclick="switchTab('perfil', 'Ajustes')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> Perfil</div>
-    </div>
-
   </div>
 
-  <script>
-    const db = window.supabase.createClient('https://aiipxfssbnpfpefbbnwm.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFpaXB4ZnNzYm5wZnBlZmJibndtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3MDM2MzIsImV4cCI6MjA5NDI3OTYzMn0.CS_e43iE4ClLgqQULrm4mNm3ji71WQZQcdBNfg6lTHg');
+  <div id="screen-ventas" class="screen">
+    <div class="nav-bar"><span class="nav-title">Venta Manual</span></div>
     
-    let usuarioActual = null, coordsGPS = null, pMin = 8.5, pSab = 10, esRegistro = false;
-    let mapa = null, markRep = null, markCasa = null;
-
-    const dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-    document.getElementById('header-fecha').innerText = dias[new Date().getDay()].toUpperCase();
-
-    async function checkAuth() {
-      const id = localStorage.getItem('aguabol_id');
-      if (id) {
-        const { data: user } = await db.from('clientes').select('*').eq('id', id).single();
-        if (user) { usuarioActual = user; iniciarApp(); return; }
-      }
-    }
-
-    async function procesarAcceso() {
-      const tel = document.getElementById('auth-phone').value.trim();
-      if (tel.length < 10) return showToast("Número inválido", true);
-      const btn = document.getElementById('btn-auth');
-      btn.disabled = true; btn.innerText = "Cargando...";
-
-      if (!esRegistro) {
-        const { data: user } = await db.from('clientes').select('*').eq('telefono', tel).maybeSingle();
-        if (user) { usuarioActual = user; guardarLocal(user); iniciarApp(); } 
-        else { esRegistro = true; document.getElementById('registro-campos').classList.add('visible'); btn.innerText = "Crear Cuenta"; btn.disabled = false; }
-      } else {
-        const nom = document.getElementById('auth-name').value.trim();
-        const dir = document.getElementById('auth-address').value.trim();
-        if (!nom) { btn.innerText = "Crear Cuenta"; btn.disabled = false; return showToast("Nombre requerido", true); }
-        const id = crypto.randomUUID();
-        await db.from('clientes').insert({ id, nombre: nom, telefono: tel, direccion: dir });
-        usuarioActual = { id, nombre: nom, telefono: tel, direccion: dir };
-        guardarLocal(usuarioActual); iniciarApp();
-      }
-    }
-
-    function guardarLocal(u) {
-      localStorage.setItem('aguabol_id', u.id); localStorage.setItem('aguabol_nombre', u.nombre); localStorage.setItem('aguabol_telefono', u.telefono); localStorage.setItem('aguabol_direccion', u.direccion || '');
-    }
-
-    function iniciarApp() {
-      document.getElementById('header-avatar').innerText = usuarioActual.nombre[0].toUpperCase();
-      document.getElementById('resumen-direccion').innerText = usuarioActual.direccion || "Sin dirección asignada.";
-      document.getElementById('perfil-nombre').value = usuarioActual.nombre;
-      document.getElementById('perfil-direccion').value = usuarioActual.direccion;
-      document.getElementById('auth-screen').classList.add('hidden');
-      setTimeout(() => { document.getElementById('auth-screen').style.display='none'; document.getElementById('main-app').classList.add('visible'); }, 400);
-      cargarPrecios(); chequearPedidoActivo();
-      db.channel('rastreo').on('postgres_changes', { event:'*', schema:'public', table:'pedidos', filter:`cliente_id=eq.${usuarioActual.id}` }, () => chequearPedidoActivo()).subscribe();
-    }
-
-    async function cargarPrecios() {
-      const { data } = await db.from('configuracion').select('*').eq('id', 1).single();
-      if (data) { pMin = data.precio_mineral; pSab = data.precio_saborizada; }
-      document.getElementById('p-min').innerText = `Bs ${pMin.toFixed(2)}`;
-      document.getElementById('p-sab').innerText = `Bs ${pSab.toFixed(2)}`;
-      calcularTotal();
-    }
-
-    async function chequearPedidoActivo() {
-      if(!usuarioActual) return;
-      const { data: p } = await db.from('pedidos').select('*').eq('cliente_id', usuarioActual.id).in('estado',['pendiente','en_camino']).order('created_at',{ascending:false}).limit(1).maybeSingle();
+    <div class="card venta-form">
+      <div class="picker-group">
+        <label>Fecha</label>
+        <input type="date" id="fecha-venta">
+      </div>
+      <div class="picker-group">
+        <label>Cliente (opcional)</label>
+        <select id="cliente-venta" onchange="mostrarDeudaEnvases()">
+          <option value="">Sin cliente</option>
+        </select>
+        <div id="deuda-envases-hint" style="font-size: 12px; color: var(--text-secondary); margin-top: 6px; display: none;"></div>
+      </div>
       
-      const cat = document.getElementById('catalogo-container'); const trk = document.getElementById('tracking-card'); const chk = document.getElementById('checkout-bar');
+      <div class="input-row">
+        <div class="picker-group">
+          <label>Agua Mineral</label>
+          <div class="qty-group">
+            <button class="btn-circle" onclick="cambiarCantidad('mineral', -1)">−</button>
+            <input type="number" id="cant-mineral" value="0" min="0" onchange="calcularTotalVenta()" readonly>
+            <button class="btn-circle" onclick="cambiarCantidad('mineral', 1)">+</button>
+          </div>
+        </div>
+        <div class="picker-group">
+          <label>Saborizada</label>
+          <div class="qty-group">
+            <button class="btn-circle" onclick="cambiarCantidad('saborizada', -1)">−</button>
+            <input type="number" id="cant-saborizada" value="0" min="0" onchange="calcularTotalVenta()" readonly>
+            <button class="btn-circle" onclick="cambiarCantidad('saborizada', 1)">+</button>
+          </div>
+        </div>
+      </div>
 
-      if (p && p.estado === 'en_camino') {
-        cat.style.display = 'none'; chk.style.display = 'none'; trk.style.display = 'block';
-        if (!mapa) {
-          mapa = L.map('mapa-cliente', { zoomControl:false, dragging:false }).setView([10.162, -67.999], 14);
-          L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(mapa);
-        }
-        setTimeout(() => mapa.invalidateSize(), 300);
-        if (usuarioActual.direccion && usuarioActual.direccion.includes('| GPS:')) {
-          const c = usuarioActual.direccion.split('| GPS:')[1].split(',');
-          if(!markCasa) markCasa = L.marker([c[0],c[1]]).addTo(mapa);
-        }
-        if (p.ubicacion_chofer) {
-          const c = p.ubicacion_chofer.split(',');
-          if(!markRep) markRep = L.marker([c[0],c[1]], {icon: L.divIcon({html:'<div style="font-size:24px;filter:drop-shadow(0 4px 6px rgba(0,0,0,0.2));">🚚</div>', className:'', iconSize:[30,30]})}).addTo(mapa);
-          else markRep.setLatLng([c[0],c[1]]);
-          mapa.panTo([c[0],c[1]]);
-        }
-      } else {
-        cat.style.display = 'block'; chk.style.display = 'flex'; trk.style.display = 'none';
-      }
+      <div class="picker-group">
+        <label>Envases Devueltos (Vacíos)</label>
+        <div class="qty-group" style="width: 50%;">
+          <button class="btn-circle" onclick="cambiarCantidad('devueltos', -1)">−</button>
+          <input type="number" id="cant-devueltos" value="0" min="0" readonly>
+          <button class="btn-circle" onclick="cambiarCantidad('devueltos', 1)">+</button>
+        </div>
+      </div>
+
+      <div class="total-venta" id="total-venta">Total: Bs 0.00</div>
+      
+      <button class="btn-primary" style="justify-content: center; padding: 16px; margin-top: 8px;" onclick="registrarVentaManual()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        Registrar Venta
+      </button>
+    </div>
+  </div>
+
+  <div id="screen-inventario" class="screen">
+    <div class="nav-bar"><span class="nav-title">Inventario</span></div>
+    
+    <div class="card">
+      <div class="stock-item">
+        <div class="stock-info">
+          <div class="stock-icon mineral"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/></svg></div>
+          <div class="stock-text-container">
+            <div class="stock-name truncate">Agua Mineral</div>
+            <div class="stock-desc truncate">Botellón 20 Litros</div>
+          </div>
+        </div>
+        <div class="stock-counter">
+          <button class="btn-circle" onclick="cambiarStock('mineral', -1)">−</button>
+          <span class="stock-qty" id="stock-mineral">0</span>
+          <button class="btn-circle" onclick="cambiarStock('mineral', 1)">+</button>
+        </div>
+      </div>
+      <div class="stock-item">
+        <div class="stock-info">
+          <div class="stock-icon saborizada"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/></svg></div>
+          <div class="stock-text-container">
+            <div class="stock-name truncate">Agua Saborizada</div>
+            <div class="stock-desc truncate">Botellón 20 Litros</div>
+          </div>
+        </div>
+        <div class="stock-counter">
+          <button class="btn-circle" onclick="cambiarStock('saborizada', -1)">−</button>
+          <span class="stock-qty" id="stock-saborizada">0</span>
+          <button class="btn-circle" onclick="cambiarStock('saborizada', 1)">+</button>
+        </div>
+      </div>
+    </div>
+    
+    <div class="card">
+       <div class="section-title" style="font-size: 16px; margin-bottom: 0;">
+          <div class="title-left">Envases Físicos Totales</div>
+          <span id="total-envases-fisicos" style="font-size: 20px; font-weight: 800;">0</span>
+       </div>
+    </div>
+  </div>
+<div id="screen-perfil" class="screen">
+  <div class="nav-bar"><span class="nav-title">Mi Negocio</span></div>
+  
+  <div class="card profile-header">
+    <div class="avatar-wrapper">
+      <input type="file" id="upload-avatar" accept="image/*" style="display: none;" onchange="subirLogoPerfil(event)">
+      <img id="profile-img" class="avatar-img" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2394a3b8'><path d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/></svg>">
+      <div class="avatar-edit-btn" onclick="document.getElementById('upload-avatar').click()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+      </div>
+    </div>
+    <div class="profile-name">AguaBol Admin</div>
+    <div class="profile-role">Propietario</div>
+    <span class="badge" style="background: #dcfce7; color: #16a34a; padding: 6px 12px; font-size: 12px;">Licencia Activa PRO</span>
+  </div>
+
+  <div class="section-title">Administración</div>
+  <div class="card settings-list">
+    <div class="setting-row" onclick="abrirModalPrecios()">
+      <div class="setting-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+      <div class="setting-text">Gestión de Precios y Costos</div>
+      <div class="setting-arrow"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></div>
+    </div>
+    <div class="setting-row" onclick="copiarDirectLink()">
+      <div class="setting-icon" style="background: #e0f2fe; color: #0284c7;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+      </div>
+      <div class="setting-text">DirectLink (Portal Cliente)</div>
+      <div class="setting-arrow"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></div>
+    </div>
+  </div>
+
+  <div class="section-title">Sistema</div>
+  <div class="card settings-list">
+    <div class="setting-row" onclick="cargarDatosCompletos()">
+      <div class="setting-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21.5 12H16c-.7 2-2 3-4 3s-3.3-1-4-3H2.5"/><path d="M5.5 5.1L2 12v6c0 1.1.9 2 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.7 4H7.3a2 2 0 0 0-1.8 1.1z"/></svg></div>
+      <div class="setting-text">Forzar Sincronización</div>
+      <div class="setting-arrow"><span style="font-size: 12px; color: var(--text-secondary); margin-right: 8px;">Online</span></div>
+    </div>
+  </div>
+</div>
+ 
+  
+
+    <div class="section-title">Sistema</div>
+    <div class="card settings-list">
+      <div class="setting-row" onclick="cargarDatosCompletos()">
+        <div class="setting-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21.5 12H16c-.7 2-2 3-4 3s-3.3-1-4-3H2.5"/><path d="M5.5 5.1L2 12v6c0 1.1.9 2 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.7 4H7.3a2 2 0 0 0-1.8 1.1z"/></svg></div>
+        <div class="setting-text">Forzar Sincronización</div>
+        <div class="setting-arrow"><span style="font-size: 12px; color: var(--text-secondary); margin-right: 8px;">Online</span></div>
+      </div>
+    </div>
+  </div>
+
+  <button class="fab" id="fab-clientes" onclick="openClientModal()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+  </button>
+
+  <div class="modal-overlay" id="modalClientOverlay">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="modal-title" id="modalClientTitle" style="font-size: 20px; font-weight: 800; margin-bottom: 16px;">Nuevo cliente</div>
+      <div class="input-group"><label>Nombre completo</label><input type="text" id="clientName" placeholder="Ej. Juan Pérez"></div>
+      <div class="input-group"><label>Teléfono (WhatsApp)</label><input type="tel" id="clientPhone" placeholder="+58 412 1234567"></div>
+      <div class="input-group"><label>Dirección</label><input type="text" id="clientAddress" placeholder="Calle, zona, ciudad"></div>
+      <div class="input-group"><label>Frecuencia de pedido (días)</label><input type="number" id="clientFrequency" placeholder="Opcional" min="1" step="1"></div>
+      
+      <div class="client-history" id="clientSalesHistory" style="display: none;"></div>
+      
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeModal('modalClientOverlay')">Cancelar</button>
+        <button class="btn-primary" style="margin: 0; width: auto; flex: 1;" onclick="saveClient()">Guardar</button>
+      </div>
+      <div style="margin-top: 16px; display: none;" id="deleteClientContainer">
+        <button class="btn-outline" style="border-color: #fee2e2; background: #fef2f2; color: var(--destructive);" onclick="deleteClient()">Eliminar cliente</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modalGastoOverlay">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="modal-title" style="font-size: 20px; font-weight: 800; margin-bottom: 16px;">Registrar Gasto</div>
+      <div class="input-group"><label>Fecha</label><input type="date" id="fecha-gasto"></div>
+      <div class="input-group"><label>Descripción</label><input type="text" id="desc-gasto" placeholder="Ej. Combustible, Etiquetas..."></div>
+      <div class="input-group"><label>Monto (Bs)</label><input type="number" id="monto-gasto" placeholder="0.00" step="0.01"></div>
+      
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeModal('modalGastoOverlay')">Cancelar</button>
+        <button class="btn-primary" style="margin: 0; width: auto; flex: 1;" onclick="guardarGasto()">Registrar</button>
+      </div>
+      <div class="gastos-list" id="gastosListContainer"></div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modalPreciosOverlay">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="modal-title" style="font-size: 20px; font-weight: 800; margin-bottom: 16px;">Gestión de Precios</div>
+      <div class="input-group"><label>Precio Mineral (Bs)</label><input type="number" id="precioMineralInput" step="0.01" min="0"></div>
+      <div class="input-group"><label>Precio Saborizada (Bs)</label><input type="number" id="precioSaborizadaInput" step="0.01" min="0"></div>
+      <div class="input-group"><label>Costo Prod. Mineral (Bs)</label><input type="number" id="costoMineralInput" step="0.01" min="0"></div>
+      <div class="input-group"><label>Costo Prod. Saborizada (Bs)</label><input type="number" id="costoSaborizadaInput" step="0.01" min="0"></div>
+      
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeModal('modalPreciosOverlay')">Cancelar</button>
+        <button class="btn-primary" style="margin: 0; width: auto; flex: 1;" onclick="guardarPrecios()">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modalChoferesOverlay">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <h3 style="font-size: 20px; font-weight: 800; margin-bottom: 8px;">Asignar a Chofer</h3>
+      <p style="color: var(--text-secondary); font-size: 14px;">Selecciona quién entregará este pedido.</p>
+      <div class="chofer-list" id="lista-choferes-container"></div>
+      <button class="btn-cancel" style="margin-top: 16px; width: 100%;" onclick="closeModal('modalChoferesOverlay')">Cancelar</button>
+    </div>
+  </div>
+
+<div id="pantallaRutaOverlay">
+    <button onclick="cerrarRuta()" style="position: absolute; top: calc(env(safe-area-inset-top) + 20px); left: 20px; z-index: 99999; width: 44px; height: 44px; border-radius: 22px; background: white; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.15); display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-primary);">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+
+    <div id="mapa-repartidor"></div>
+    
+    <div class="ruta-panel">
+      <div class="modal-handle" style="margin-top: -10px;" onclick="cerrarRuta()"></div>
+      
+      <div class="cliente-info-panel">
+        <div>
+          <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 4px;">
+            <h3 id="ruta-cliente-nombre" style="margin: 0; font-size: 22px; font-weight: 800;">Cargando...</h3>
+            <button id="btn-contacto-ruta" style="display: none; width: 36px; height: 36px; border-radius: 10px; border: none; background: #dcfce7; color: #16a34a; cursor: pointer; align-items: center; justify-content: center;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+            </button>
+          </div>
+          <div id="ruta-chofer-asignado" style="font-size: 13px; color: var(--tint); font-weight: 700;">Sin chofer asignado</div>
+        </div>
+        <div class="lealtad-badge" id="ruta-lealtad-badge">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 7.4h7.6l-6.2 4.6 2.4 7.4-6.2-4.6-6.2 4.6 2.4-7.4-6.2-4.6h7.6z"/></svg>
+          <span id="ruta-lealtad-texto">0/10</span>
+        </div>
+      </div>
+      
+      <p id="ruta-cliente-dir" style="color: var(--text-secondary); font-size: 15px; margin: 0 0 16px 0; line-height: 1.4; background: #f8fafc; padding: 12px; border-radius: 12px;">Dirección...</p>
+      
+      <div style="display: flex; gap: 12px; margin-bottom: 16px;">
+        <div style="flex: 1; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px; text-align: center;">
+           <div style="font-size: 11px; color: var(--text-secondary); font-weight: 700; text-transform: uppercase;">Distancia</div>
+           <div id="ruta-distancia" style="font-size: 18px; font-weight: 800; color: var(--text-primary);">-- km</div>
+        </div>
+        <div style="flex: 1; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px; text-align: center;">
+           <div style="font-size: 11px; color: var(--text-secondary); font-weight: 700; text-transform: uppercase;">Tiempo Est.</div>
+           <div id="ruta-tiempo" style="font-size: 18px; font-weight: 800; color: var(--text-primary);">-- min</div>
+        </div>
+      </div>
+      
+      <div class="panel-acciones">
+        <button class="btn-outline" style="color: var(--destructive); border-color: #fecaca; background: #fef2f2; margin: 0;" id="btn-cancelar-ruta">Cancelar Pedido</button>
+        <button class="btn-primary" style="background: #10b981; margin: 0;" id="btn-completar-ruta">Marcar Entregado</button>
+      </div>
+      <button id="btn-iniciar-viaje" class="btn-primary" style="background: linear-gradient(135deg, #10b981, #059669); width: 100%; margin-top: 12px;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
+        Iniciar Navegación (En App)
+      </button>
+    </div>
+  </div>
+
+  <div class="tab-bar">
+    <div class="tab-item active" data-screen="inicio" onclick="switchTab('inicio')">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      <span>Inicio</span>
+    </div>
+    <div class="tab-item" data-screen="operaciones" onclick="switchTab('operaciones')">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/><line x1="16" y1="11" x2="22" y2="11"/><line x1="19" y1="8" x2="19" y2="14"/></svg>
+      <span>Operaciones</span>
+    </div>
+    <div class="tab-item" data-screen="ventas" onclick="switchTab('ventas')">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+      <span>Ventas</span>
+    </div>
+    <div class="tab-item" data-screen="inventario" onclick="switchTab('inventario')">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+      <span>Inventario</span>
+    </div>
+    <div class="tab-item" data-screen="perfil" onclick="switchTab('perfil')">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span>Ajustes</span>
+    </div>
+  </div>
+    <script src="https://cdn.jsdelivr.net/npm/@capacitor/geolocation@6/dist/capacitor-geolocation.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@capacitor/local-notifications@6/dist/capacitor-local-notifications.js"></script>
+        <script>
+    // ========== 1. CONFIGURACIÓN DE SUPABASE ==========
+    const SUPABASE_URL = 'https://aiipxfssbnpfpefbbnwm.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFpaXB4ZnNzYm5wZnBlZmJibndtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3MDM2MzIsImV4cCI6MjA5NDI3OTYzMn0.CS_e43iE4ClLgqQULrm4mNm3ji71WQZQcdBNfg6lTHg';
+    const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+              // Variable para notificaciones locales (plugin ya cargado)
+    const LocalNotifications = Capacitor.Plugins.LocalNotifications;
+
+    // ========== 2. VARIABLES DE ESTADO ==========
+    let ventas = [];
+    let pedidosActivos = [];
+    let stock = { mineral: 0, saborizada: 0, envasesVacios: 0 };
+    let clients = [];
+    let gastos = [];
+    let choferes = []; 
+    
+    let precioMineral = 8.5;
+    let precioSaborizada = 10.0;
+    let costoProdMineral = 4.0;
+    let costoProdSaborizada = 5.0;
+    
+    let editingClientId = null;
+    let pedidoSeleccionadoId = null; 
+    let watchGpsId = null; // Para controlar el rastreo en vivo
+
+    let mapaRepartidor = null;
+    let capaRuta = null;
+    let marcadorA = null;
+    let marcadorB = null;
+
+    // ========== 3. FUNCIONES DE UTILIDAD ==========
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      
+      let iconSvg = '';
+      if(type === 'success') iconSvg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`;
+      else if (type === 'error') iconSvg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`;
+      else iconSvg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>`;
+      
+      toast.innerHTML = `${iconSvg} <span>${escapeHtml(message)}</span>`;
+      container.appendChild(toast);
+      setTimeout(() => { toast.remove(); }, 3400);
     }
 
-    function switchTab(id, titulo) {
+    function escapeHtml(text) { 
+      return String(text).replace(/[&<>"]/g, m => ({'&':'&','<':'<','>':'>','"':'"'}[m])); 
+    }
+
+    function formatearBs(monto) { 
+      return 'Bs ' + monto.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','); 
+    }
+
+    function animarNumero(id, endValue, duration) {
+      const obj = document.getElementById(id);
+      const isNegative = endValue < 0;
+      const absEnd = Math.abs(endValue);
+      let startTimestamp = null;
+      
+      const step = (timestamp) => {
+        if (!startTimestamp) startTimestamp = timestamp;
+        const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+        const easeOut = 1 - Math.pow(1 - progress, 3);
+        const currentVal = easeOut * absEnd;
+        const displayVal = isNegative ? -currentVal : currentVal;
+        obj.textContent = formatearBs(displayVal);
+        
+        if (progress < 1) window.requestAnimationFrame(step);
+        else obj.textContent = formatearBs(endValue);
+      };
+      window.requestAnimationFrame(step);
+    }
+
+    // ========== 4. NAVEGACIÓN Y TABS ==========
+    function switchTab(screenId) {
       document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-      document.getElementById('screen-' + id).classList.add('active');
-      document.getElementById('header-titulo').innerText = titulo;
-      document.querySelectorAll('.tab-item').forEach((t, i) => t.classList.toggle('active', (id==='pedido'&&i===0)||(id==='lealtad'&&i===1)||(id==='perfil'&&i===2)));
-      
-      const chk = document.getElementById('checkout-bar');
-      chk.style.display = (id === 'pedido' && document.getElementById('tracking-card').style.display !== 'block') ? 'flex' : 'none';
+      document.getElementById('screen-' + screenId).classList.add('active');
+      document.querySelectorAll('.tab-item').forEach(t => t.classList.toggle('active', t.dataset.screen === screenId));
 
-      if(id === 'lealtad') cargarLealtad();
-    }
-
-    function cambiarCant(t, d) {
-      const el = document.getElementById('qty-'+t);
-      el.innerText = Math.max(0, parseInt(el.innerText) + d);
-      calcularTotal();
-    }
-
-    function calcularTotal() {
-      const t = (parseInt(document.getElementById('qty-min').innerText)*pMin) + (parseInt(document.getElementById('qty-sab').innerText)*pSab);
-      document.getElementById('total-pago').innerText = `Bs ${t.toFixed(2)}`;
-    }
-
-    function obtenerGPS() {
-      if (navigator.geolocation) {
-        const btn = document.getElementById('btn-gps'); btn.innerHTML = "⏳ Localizando...";
-        navigator.geolocation.getCurrentPosition(pos => {
-          coordsGPS = `${pos.coords.latitude},${pos.coords.longitude}`;
-          btn.innerHTML = "✅ GPS Compartido Exitosamente"; btn.style.background = "#DCFCE7"; btn.style.color = "#16A34A";
-        }, () => { btn.innerHTML = "⚠️ Activa el GPS"; });
-      }
-    }
-
-    async function enviarPedido() {
-      const m = parseInt(document.getElementById('qty-min').innerText);
-      const s = parseInt(document.getElementById('qty-sab').innerText);
-      if (m+s === 0) return showToast("Añade productos al catálogo", true);
-      
-      let dir = usuarioActual.direccion;
-      if (coordsGPS) dir = (dir ? dir.split('|')[0] : "Mi Ubicación") + ` | GPS: ${coordsGPS}`;
-      
-      const { error } = await db.from('pedidos').insert({ id: crypto.randomUUID(), cliente_id: usuarioActual.id, items: { mineral: m, saborizada: s }, monto_total: (m*pMin + s*pSab), estado: 'pendiente' });
-      if (!error) { showToast("¡Pedido confirmado!"); document.getElementById('qty-min').innerText="1"; document.getElementById('qty-sab').innerText="0"; calcularTotal(); chequearPedidoActivo(); }
-    }
-
-    async function cargarLealtad() {
-      const { data: v } = await db.from('ventas').select('mineral, saborizada').eq('cliente_id', usuarioActual.id);
-      let tot = 0; v?.forEach(x => tot += (x.mineral+x.saborizada));
-      
-      let pts = tot % 10;
-      if (pts === 0 && tot > 0) {
-        pts = 10; 
-      }
-      
-      const faltan = 10 - pts;
-      const lblStatus = document.getElementById('status-lealtad');
-      
-      if (faltan === 0) {
-        lblStatus.innerHTML = "¡Felicidades! Tienes un botellón GRATIS 🎉";
-        lblStatus.style.background = "rgba(255, 149, 0, 0.2)";
-        lblStatus.style.color = "var(--gold)";
+      const fabBtn = document.getElementById('fab-clientes');
+      if(screenId === 'operaciones' && document.getElementById('btn-seg-directorio').classList.contains('active')) {
+        fabBtn.classList.add('active-fab');
+        renderClientList();
       } else {
-        lblStatus.innerHTML = `Te faltan ${faltan} sellos para tu regalo`;
-        lblStatus.style.background = "rgba(255,255,255,0.1)";
-        lblStatus.style.color = "white";
+        fabBtn.classList.remove('active-fab');
       }
+
+      if(screenId === 'inicio') cargarMovimiento();
+      if(screenId === 'inventario') actualizarStockUI();
+    }
+
+    function switchSubTab(sub) {
+      document.getElementById('btn-seg-pedidos').classList.toggle('active', sub === 'pedidos');
+      document.getElementById('btn-seg-directorio').classList.toggle('active', sub === 'directorio');
       
-      const cont = document.getElementById('stamps-container'); 
-      cont.innerHTML = '';
+      document.getElementById('sub-pedidos').style.display = sub === 'pedidos' ? 'block' : 'none';
+      document.getElementById('sub-directorio').style.display = sub === 'directorio' ? 'block' : 'none';
       
-      for (let i = 1; i <= 10; i++) {
-        const isFilled = i <= pts;
-        const isFree = i === 10;
-        const delay = isFilled ? (i * 0.12) : 0; 
+      const fabBtn = document.getElementById('fab-clientes');
+      if (sub === 'directorio') {
+          fabBtn.classList.add('active-fab');
+          renderClientList();
+      } else {
+          fabBtn.classList.remove('active-fab');
+      }
+    }
+
+    function openModal(id) { document.getElementById(id).classList.add('active'); }
+    function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+    document.querySelectorAll('.modal-overlay').forEach(overlay => {
+      overlay.addEventListener('click', function(e) { if (e.target === this) closeModal(this.id); });
+    });
+
+    // ========== 5. SINCRONIZACIÓN DE DATOS (SUPABASE) ==========
+    async function cargarDatosCompletos() {
+      showToast('Sincronizando datos...', 'info');
+      try {
+        const [
+          { data: confData },
+          { data: stockData },
+          { data: clientsData },
+          { data: gastosData },
+          { data: ventasData },
+          { data: pedidosData },
+          { data: choferesData }
+        ] = await Promise.all([
+          db.from('configuracion').select('*').eq('id', 1).single(),
+          db.from('stock').select('*').eq('id', 1).single(),
+          db.from('clientes').select('*'),
+          db.from('gastos').select('*'),
+          db.from('ventas').select('*'),
+          db.from('pedidos').select('*, clientes(*)').in('estado', ['pendiente', 'en_camino']).order('created_at', { ascending: false }),
+          db.from('choferes').select('*').eq('activo', true) 
+        ]);
+
+        if (confData) {
+          precioMineral = parseFloat(confData.precio_mineral);
+          precioSaborizada = parseFloat(confData.precio_saborizada);
+          costoProdMineral = parseFloat(confData.costo_mineral);
+          costoProdSaborizada = parseFloat(confData.costo_saborizada);
+        }
+        if (stockData) stock = { mineral: stockData.mineral, saborizada: stockData.saborizada, envasesVacios: stockData.envases_vacios };
+        if (clientsData) clients = clientsData.map(c => ({ id: c.id, name: c.nombre, phone: c.telefono, address: c.direccion, frequency: c.frecuencia_dias ? c.frecuencia_dias.toString() : '' }));
+        if (gastosData) gastos = gastosData.map(g => ({ id: g.id, fecha: g.fecha, desc: g.descripcion, monto: parseFloat(g.monto) }));
+        if (ventasData) ventas = ventasData.map(v => ({ id: v.id, fecha: v.fecha, clienteId: v.cliente_id, mineral: v.mineral, saborizada: v.saborizada, envasesDevueltos: v.envases_devueltos, total: parseFloat(v.total) }));
+        if (pedidosData) pedidosActivos = pedidosData;
+        if (choferesData) choferes = choferesData;
+
+        cargarMovimiento();
+        actualizarStockUI();
+        llenarSelectClientes();
+        renderClientList();
+        renderPedidos();
         
-        let clases = 'stamp-spot';
-        if (isFree) clases += ' free';
-        if (isFilled) clases += ' filled';
-
-        cont.innerHTML += `
-          <div class="${clases}" style="animation-delay: ${delay}s">
-            <svg viewBox="0 0 24 24" width="22" height="22" fill="white" style="animation-delay: ${delay}s">
-              <path d="M12 21.5c-3.3 0-6-2.6-6-5.8 0-3.3 3.8-9.1 5.2-11.2.3-.5 1.1-.5 1.5 0 1.4 2 5.3 7.9 5.3 11.2 0 3.2-2.7 5.8-6 5.8z"/>
-            </svg>
-          </div>`;
+      } catch (err) {
+        console.error("Error al sincronizar:", err);
+        showToast('Error al sincronizar', 'error');
       }
     }
 
-    async function actualizarPerfil() {
-      const n = document.getElementById('perfil-nombre').value; const d = document.getElementById('perfil-direccion').value;
-      await db.from('clientes').update({ nombre: n, direccion: d }).eq('id', usuarioActual.id);
-      usuarioActual.nombre = n; usuarioActual.direccion = d; guardarLocal(usuarioActual);
-      document.getElementById('resumen-direccion').innerText = d; showToast("Datos guardados con éxito");
+    // ========== 6. OPERACIONES: PEDIDOS EN VIVO (LOGÍSTICA) ==========
+    function calcularLealtadCliente(clienteId) {
+      const compras = ventas.filter(v => v.clienteId === clienteId);
+      let total = 0; compras.forEach(c => { total += (c.mineral || 0) + (c.saborizada || 0); });
+      return total % 10;
     }
 
-    function cerrarSesion() { localStorage.clear(); window.location.reload(); }
-    function showToast(m, err=false) { const t = document.getElementById('toast'); document.getElementById('toast-msg').innerText = m; t.style.display='flex'; setTimeout(()=>t.style.display='none', 3000); }
+    function renderPedidos() {
+      const container = document.getElementById('lista-pedidos-container');
+      const vacia = document.getElementById('lista-pedidos-vacia');
+      const badge = document.getElementById('badge-pedidos');
+      
+      container.innerHTML = '';
+      
+      const pendientes = pedidosActivos.filter(p => p.estado === 'pendiente');
+      if (pendientes.length > 0) {
+        badge.style.display = 'inline-block';
+        badge.innerText = pendientes.length;
+      } else {
+        badge.style.display = 'none';
+      }
 
-    document.addEventListener('DOMContentLoaded', checkAuth);
+      if (pedidosActivos.length === 0) { 
+          vacia.style.display = 'block'; 
+          return; 
+      }
+      vacia.style.display = 'none';
+
+      pedidosActivos.forEach(p => {
+        const cli = p.clientes || { nombre: 'Desconocido', direccion: 'Sin dirección' };
+        const items = p.items;
+        const hora = new Date(p.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        
+        let dirLimpia = cli.direccion || 'Sin dirección';
+        let lat = null, lng = null;
+        if(dirLimpia.includes('| GPS:')) { 
+            const pts = dirLimpia.split('| GPS:'); 
+            dirLimpia = pts[0].trim(); 
+            const crd = pts[1].split(','); 
+            lat = parseFloat(crd[0]); lng = parseFloat(crd[1]); 
+        }
+
+        let detalle = '';
+        if(items.mineral > 0) detalle += `<span style="color:var(--tint);">${items.mineral} Mineral</span>`;
+        if(items.saborizada > 0) detalle += `<span style="color:#b45309;">${items.saborizada} Saborizada</span>`;
+
+        let botones = '';
+        if(p.estado === 'pendiente') {
+          botones = `
+            <button class="btn-action btn-aceptar" onclick="abrirControlRuta('${p.id}', ${lat}, ${lng}, '${escapeHtml(cli.nombre)}', '${escapeHtml(dirLimpia)}')">📍 Iniciar (Yo)</button>
+            <button class="btn-action" style="background:#f1f5f9; color:var(--text-primary);" onclick="abrirModalChoferes('${p.id}')">👨‍✈️ Asignar Chofer</button>
+          `;
+        } else if (p.estado === 'en_camino') {
+          const chofer = choferes.find(c => c.id === p.chofer_id);
+          const txtChofer = chofer ? `Reparte: ${chofer.nombre}` : 'Reparto Propio';
+          botones = `
+            <div style="width:100%; text-align:center; font-size:13px; font-weight:700; color:var(--tint); margin-bottom:8px;">${txtChofer}</div>
+            <button class="btn-action btn-aceptar" style="background:var(--green); width:100%;" onclick="abrirControlRuta('${p.id}', ${lat}, ${lng}, '${escapeHtml(cli.nombre)}', '${escapeHtml(dirLimpia)}')">🎯 Controlar Entrega</button>
+          `;
+        }
+
+        container.innerHTML += `
+          <div class="pedido-card ${p.estado}">
+            <div class="pedido-header">
+              <div>
+                <div class="pedido-nombre">${escapeHtml(cli.nombre)}</div>
+                <div style="font-size:13px; color:var(--text-secondary); margin-top:2px;" class="truncate">${escapeHtml(dirLimpia)}</div>
+              </div>
+              <div class="pedido-hora">${hora}</div>
+            </div>
+            <div class="pedido-items">${detalle}</div>
+            <div style="font-weight:800; text-align:right; margin-bottom:12px;">Total: Bs ${p.monto_total}</div>
+            <div class="pedido-acciones">${botones}</div>
+          </div>
+        `;
+      });
+    }
+
+    // --- LÓGICA DE ASIGNACIÓN (NUEVA) ---
+    function abrirModalChoferes(pedidoId) {
+      pedidoSeleccionadoId = pedidoId;
+      const container = document.getElementById('lista-choferes-container');
+      container.innerHTML = '';
+      
+      choferes.forEach(c => {
+        container.innerHTML += `
+          <div class="chofer-item" onclick="asignarChofer('${c.id}', '${escapeHtml(c.nombre)}', '${c.telefono}')">
+            <div style="font-weight:700; font-size:16px; color: var(--text-primary);">${escapeHtml(c.nombre)}</div>
+            <div style="color:var(--tint); font-size:14px; font-weight:700; background: #f0f9ff; padding: 6px 12px; border-radius: 8px;">Asignar →</div>
+          </div>`;
+      });
+      openModal('modalChoferesOverlay');
+    }
+
+    async function asignarChofer(choferId, choferNombre, choferTel) {
+      closeModal('modalChoferesOverlay');
+      const pedido = pedidosActivos.find(p => p.id === pedidoSeleccionadoId);
+      
+      await db.from('pedidos').update({ estado: 'en_camino', chofer_id: choferId }).eq('id', pedidoSeleccionadoId);
+      pedido.estado = 'en_camino'; pedido.chofer_id = choferId;
+      renderPedidos();
+
+      // Generar el Magic Link apuntando a tu servidor público en Netlify
+      const urlBase = "https://celadon-moonbeam-5c1af4.netlify.app";
+      const linkMagico = `${urlBase}/chofer.html?id=${pedidoSeleccionadoId}`;
+
+      const textoWa = `🚚 *Nuevo Pedido: ${pedido.clientes.nombre}*\nDetalle: ${pedido.items.mineral || 0} Min / ${pedido.items.saborizada || 0} Sab\nCobrar: Bs ${pedido.monto_total}\n\n👉 *ABRE ESTE ENLACE PARA ENTREGAR:*\n${linkMagico}`;
+      
+      const linkWa = `https://wa.me/${choferTel.replace(/\D/g,'')}?text=${encodeURIComponent(textoWa)}`;
+      window.open(linkWa, '_blank'); 
+      showToast('Chofer asignado. Enlace enviado por WhatsApp.');
+    }
+
+
+
+    // --- ACCIONES DE ENTREGA ---
+    async function completarPedido(id) {
+      const pedido = pedidosActivos.find(p => p.id === id);
+      
+      await db.from('pedidos').update({ estado: 'entregado' }).eq('id', id);
+      cerrarRuta();
+      
+      if(pedido) {
+          const idVenta = crypto.randomUUID();
+          const fechaHoy = new Date().toISOString().split('T')[0];
+          const m = pedido.items.mineral || 0;
+          const s = pedido.items.saborizada || 0;
+          
+          ventas.push({ id: idVenta, fecha: fechaHoy, clienteId: pedido.cliente_id, mineral: m, saborizada: s, envasesDevueltos: 0, total: pedido.monto_total });
+          stock.mineral -= m; stock.saborizada -= s;
+          
+          await db.from('stock').upsert({ id: 1, mineral: stock.mineral, saborizada: stock.saborizada, envases_vacios: stock.envasesVacios });
+          await db.from('ventas').insert({ id: idVenta, fecha: fechaHoy, cliente_id: pedido.cliente_id, mineral: m, saborizada: s, envases_devueltos: 0, total: pedido.monto_total });
+      }
+
+      pedidosActivos = pedidosActivos.filter(p => p.id !== id);
+      renderPedidos(); cargarMovimiento(); actualizarStockUI();
+      showToast('Pedido Entregado con Éxito');
+    }
+
+    async function cancelarPedido(id) {
+      if(confirm('¿Seguro que deseas cancelar este pedido? Se notificará al cliente.')) {
+        await db.from('pedidos').update({ estado: 'cancelado' }).eq('id', id);
+        cerrarRuta();
+        pedidosActivos = pedidosActivos.filter(p => p.id !== id);
+        renderPedidos();
+      }
+    }
+
+    // ========== 7. DIRECTORIO CRM ==========
+    function getClientStats(clienteId) {
+      const clientSales = ventas.filter(v => v.clienteId === clienteId).sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+      let totMin = 0, totSab = 0, totDev = 0;
+      clientSales.forEach(v => { totMin += v.mineral; totSab += v.saborizada; totDev += (v.envasesDevueltos || 0); });
+      
+      const deudaEnvases = (totMin + totSab) - totDev;
+      const client = clients.find(c => c.id === clienteId);
+      let pedidoPendiente = false;
+      
+      if (clientSales.length > 0) {
+        const diasDesdeUltima = Math.floor((new Date() - new Date(clientSales[0].fecha)) / (1000 * 60 * 60 * 24));
+        if (client && client.frequency && !isNaN(parseInt(client.frequency))) {
+          pedidoPendiente = diasDesdeUltima > parseInt(client.frequency) * 1.3;
+        } else if (clientSales.length >= 2) {
+          let diasDiff = [];
+          for(let i = 0; i < Math.min(clientSales.length, 3) - 1; i++){
+             diasDiff.push(Math.abs(new Date(clientSales[i].fecha) - new Date(clientSales[i+1].fecha)) / (1000 * 60 * 60 * 24));
+          }
+          const avg = diasDiff.reduce((a,b)=>a+b, 0) / diasDiff.length;
+          pedidoPendiente = diasDesdeUltima > avg + 1;
+        }
+      }
+      return { totMin, totSab, deudaEnvases, pedidoPendiente };
+    }
+
+    function renderClientList() {
+      const search = document.getElementById('searchInput').value.toLowerCase().trim();
+      const filtered = clients.filter(c => c.name.toLowerCase().includes(search) || (c.phone && c.phone.includes(search)));
+      const container = document.getElementById('clientListContainer');
+      
+      if (filtered.length === 0) {
+        container.innerHTML = `<div style="padding:40px 20px; text-align:center; color:var(--text-secondary);">No se encontraron clientes.</div>`;
+        return;
+      }
+      
+      let html = '';
+      filtered.forEach(client => {
+        const stats = getClientStats(client.id);
+        const inicial = client.name.charAt(0).toUpperCase();
+        
+        let direccionVisual = client.address || 'Sin dirección';
+        let destLat = null, destLng = null;
+
+        if (client.address) {
+           if (client.address.includes('| GPS:')) {
+               const partes = client.address.split('| GPS:');
+               direccionVisual = partes[0].trim();
+               const coords = partes[1].trim().split(',');
+               if(coords.length === 2) { destLat = parseFloat(coords[0]); destLng = parseFloat(coords[1]); }
+           } 
+        }
+
+        let btnMapaHtml = '';
+        if (client.address) {
+          if (destLat !== null && destLng !== null) {
+            btnMapaHtml = `
+              <div class="action-btn map" onclick="event.stopPropagation(); abrirControlRuta(null, ${destLat}, ${destLng}, '${escapeHtml(client.name)}', '${escapeHtml(direccionVisual)}')">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
+              </div>`;
+          } else {
+            const wazeBusqueda = `https://waze.com/ul?q=${encodeURIComponent(direccionVisual)}`;
+            btnMapaHtml = `
+              <div class="action-btn map" onclick="event.stopPropagation(); window.open('${wazeBusqueda}', '_blank')">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              </div>`;
+          }
+        }
+
+        const urlWa = `https://wa.me/${client.phone.replace(/[^0-9]/g, '')}?text=Hola%20${encodeURIComponent(client.name)},%20te%20escribimos%20de%20AguaBol.`;
+        let badgeDeuda = stats.deudaEnvases > 0 ? `<span class="badge ${stats.deudaEnvases > 3 ? 'alert' : ''}">Debe ${stats.deudaEnvases}</span>` : '';
+
+        html += `
+          <div class="client-row" onclick="openEditModal('${client.id}')">
+            <div class="client-header">
+              <div class="client-avatar">${inicial}</div>
+              <div class="client-info-main">
+                <div class="client-name">
+                  <span class="truncate">${escapeHtml(client.name)}</span>
+                  ${stats.pedidoPendiente ? '<span class="badge pending">Pedido Pendiente</span>' : ''}
+                </div>
+                <div class="client-stats">
+                  <span class="badge mineral">${stats.totMin} Min</span>
+                  <span class="badge saborizada">${stats.totSab} Sab</span>
+                  ${badgeDeuda}
+                </div>
+              </div>
+            </div>
+            <div class="client-actions-bar">
+               <div class="truncate" style="font-size:13px; color:var(--text-secondary); max-width:60%;">
+                 ${escapeHtml(direccionVisual)}
+               </div>
+               <div class="action-icons">
+                 ${btnMapaHtml}
+                 <div class="action-btn whatsapp" onclick="event.stopPropagation(); window.open('${urlWa}', '_blank')" title="Contactar">
+                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                 </div>
+               </div>
+            </div>
+          </div>`;
+      });
+      container.innerHTML = html;
+    }
+
+    // ========== 8. MÓDULO REPARTO (MAPA LEAFLET) ==========
+    function abrirControlRuta(pedidoId, destLat, destLng, nombreCliente, direccionCliente) {
+      const modal = document.getElementById('pantallaRutaOverlay');
+      modal.style.display = 'flex'; setTimeout(() => modal.classList.add('active'), 10);
+      
+      document.getElementById('ruta-cliente-nombre').textContent = nombreCliente;
+      document.getElementById('ruta-cliente-dir').textContent = direccionCliente;
+      document.getElementById('ruta-distancia').innerHTML = '<span class="spin">⏳</span>';
+      document.getElementById('ruta-tiempo').innerHTML = '--';
+
+      const btnViaje = document.getElementById('btn-iniciar-viaje');
+
+      if(pedidoId) {
+        const pedido = pedidosActivos.find(p => p.id === pedidoId);
+        
+        // Asignación de lealtad y chofer
+        const puntos = calcularLealtadCliente(pedido.cliente_id);
+        document.getElementById('ruta-lealtad-texto').textContent = `${puntos}/10 Compras`;
+        const chofer = choferes.find(c => c.id === pedido.chofer_id);
+        document.getElementById('ruta-chofer-asignado').textContent = chofer ? `Repartidor: ${chofer.nombre}` : 'Reparto Propio (Administrador)';
+        
+        // Acciones exclusivas del pedido
+        document.getElementById('btn-cancelar-ruta').style.display = 'block';
+        document.getElementById('btn-completar-ruta').style.display = 'block';
+        btnViaje.style.display = 'flex'; // Mostramos el botón de viaje
+        
+        document.getElementById('btn-cancelar-ruta').onclick = () => cancelarPedido(pedidoId);
+        document.getElementById('btn-completar-ruta').onclick = () => completarPedido(pedidoId);
+
+        // Si está pendiente y lo abriste tú, asume auto-reparto.
+        if(pedido.estado === 'pendiente') {
+          db.from('pedidos').update({ estado: 'en_camino', chofer_id: null }).eq('id', pedidoId).then(()=>{
+             pedido.estado = 'en_camino'; renderPedidos();
+          });
+        }
+      } else {
+        // Modo solo GPS (desde el directorio CRM, no hay pedido activo)
+        document.getElementById('ruta-chofer-asignado').textContent = 'Visualización GPS Libre';
+        document.getElementById('ruta-lealtad-texto').textContent = '-';
+        document.getElementById('btn-cancelar-ruta').style.display = 'none';
+        document.getElementById('btn-completar-ruta').style.display = 'none';
+        btnViaje.style.display = 'none'; // Ocultamos el botón si no hay pedido
+      }
+
+      // ---- PEGAR ESTO DENTRO DE abrirControlRuta ----
+      let tlf = '';
+      if (pedidoId) {
+         const pedido = pedidosActivos.find(p => p.id === pedidoId);
+         if(pedido && pedido.clientes) tlf = pedido.clientes.telefono;
+      } else {
+         const c = clients.find(c => c.name === nombreCliente);
+         if (c) tlf = c.phone;
+      }
+      
+      const btnWa = document.getElementById('btn-contacto-ruta');
+      if (tlf) {
+         btnWa.style.display = 'flex';
+         btnWa.onclick = () => window.open(`https://wa.me/${tlf.replace(/\D/g,'')}`, '_blank');
+      } else {
+         btnWa.style.display = 'none';
+      }
+      // --------------------------------------------------
+
+      // --- INICIALIZAR EL MAPA VISUAL ---
+      if (!mapaRepartidor) {
+          mapaRepartidor = L.map('mapa-repartidor', { zoomControl: false }).setView([10.1620, -67.9996], 13);
+          L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(mapaRepartidor);
+      }
+
+      // Dibujar la ubicación estática inicial rápido
+      setTimeout(() => {
+          mapaRepartidor.invalidateSize();
+          if (navigator.geolocation && destLat) {
+              navigator.geolocation.getCurrentPosition(async (pos) => {
+                  const [oLat, oLng] = [pos.coords.latitude, pos.coords.longitude];
+
+                  if(marcadorA) mapaRepartidor.removeLayer(marcadorA);
+                  if(marcadorB) mapaRepartidor.removeLayer(marcadorB);
+                  if(capaRuta) mapaRepartidor.removeLayer(capaRuta);
+
+                  marcadorA = L.marker([oLat, oLng]).addTo(mapaRepartidor);
+                  marcadorB = L.marker([destLat, destLng]).addTo(mapaRepartidor);
+                  mapaRepartidor.fitBounds(L.latLngBounds([oLat, oLng], [destLat, destLng]), {padding: [50,50]});
+
+                  try {
+                      const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${oLng},${oLat};${destLng},${destLat}?geometries=geojson`);
+                      const data = await res.json();
+
+                      if(data.routes && data.routes[0]) {
+                          capaRuta = L.geoJSON(data.routes[0].geometry, { style: { color: '#0ea5e9', weight: 6, opacity: 0.8 } }).addTo(mapaRepartidor);
+                          document.getElementById('ruta-distancia').textContent = `${(data.routes[0].distance / 1000).toFixed(1)} km`;
+                          document.getElementById('ruta-tiempo').textContent = `${Math.round(data.routes[0].duration / 60)} min`;
+                      } else {
+                          document.getElementById('ruta-distancia').textContent = 'Error';
+                      }
+                  } catch(e) { document.getElementById('ruta-distancia').textContent = 'Error'; }
+              }, (err) => {
+                  showToast('Activa el GPS', 'error');
+                  document.getElementById('ruta-distancia').textContent = 'Sin GPS';
+              }, { enableHighAccuracy: true });
+          } else {
+              showToast('GPS no disponible', 'error');
+          }
+      }, 400); 
+
+      // --- LÓGICA DEL BOTÓN DE TRANSMISIÓN EN VIVO ---
+      btnViaje.innerHTML = '📍 Iniciar Navegación (En App)';
+      btnViaje.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+
+      btnViaje.onclick = () => {
+        if (watchGpsId) {
+          // Detener
+          navigator.geolocation.clearWatch(watchGpsId);
+          watchGpsId = null;
+          btnViaje.innerHTML = '📍 Iniciar Navegación (En App)';
+          btnViaje.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+          showToast('Navegación pausada');
+          return;
+        }
+
+        // Iniciar
+        btnViaje.innerHTML = '🛑 Detener Transmisión GPS';
+        btnViaje.style.background = 'var(--destructive)';
+        showToast('Iniciando ruta. El cliente te está viendo en vivo.', 'success');
+
+        watchGpsId = navigator.geolocation.watchPosition(async (pos) => {
+          const latAct = pos.coords.latitude;
+          const lngAct = pos.coords.longitude;
+
+          // Mueve tu camión en tu pantalla
+          if(marcadorA) { marcadorA.setLatLng([latAct, lngAct]); } 
+          else { marcadorA = L.marker([latAct, lngAct]).addTo(mapaRepartidor); }
+
+          // Sube la coordenada a Supabase para que el cliente la vea
+          if (pedidoId) {
+             await db.from('pedidos').update({ ubicacion_chofer: `${latAct},${lngAct}` }).eq('id', pedidoId);
+          }
+
+          // Dibuja la línea azul recalculada
+          try {
+            const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${lngAct},${latAct};${destLng},${destLat}?geometries=geojson`);
+            const data = await res.json();
+            if(data.routes && data.routes[0]) {
+              if(capaRuta) mapaRepartidor.removeLayer(capaRuta);
+              capaRuta = L.geoJSON(data.routes[0].geometry, { style: { color: '#0ea5e9', weight: 6, opacity: 0.8 } }).addTo(mapaRepartidor);
+              document.getElementById('ruta-distancia').textContent = `${(data.routes[0].distance / 1000).toFixed(1)} km`;
+              document.getElementById('ruta-tiempo').textContent = `${Math.round(data.routes[0].duration / 60)} min`;
+            }
+          } catch(e) {}
+        }, (err) => console.log('Buscando señal GPS...'), { enableHighAccuracy: true });
+      };
+    }
+    function cerrarRuta() {
+      // APAGAR EL GPS AL CERRAR LA VENTANA
+      if (watchGpsId) {
+        navigator.geolocation.clearWatch(watchGpsId);
+        watchGpsId = null;
+      }
+      
+      const modal = document.getElementById('pantallaRutaOverlay');
+      modal.classList.remove('active');
+      setTimeout(() => modal.style.display = 'none', 300);
+    }
+
+    // ========== 9. VENTAS MANUALES E INVENTARIO ==========
+    function llenarSelectClientes() {
+      const select = document.getElementById('cliente-venta');
+      select.innerHTML = '<option value="">Sin cliente</option>';
+      clients.forEach(c => select.innerHTML += `<option value="${c.id}">${escapeHtml(c.name)}</option>`);
+    }
+
+    function mostrarDeudaEnvases() {
+      const clienteId = document.getElementById('cliente-venta').value;
+      const hint = document.getElementById('deuda-envases-hint');
+      if(clienteId) {
+        const stats = getClientStats(clienteId);
+        hint.style.display = 'block';
+        hint.textContent = `Debe ${stats.deudaEnvases} envase(s).`;
+        hint.style.color = stats.deudaEnvases > 2 ? 'var(--destructive)' : 'var(--text-secondary)';
+      } else {
+        hint.style.display = 'none';
+      }
+    }
+
+    function calcularTotalVenta() {
+      const min = parseInt(document.getElementById('cant-mineral').value) || 0;
+      const sab = parseInt(document.getElementById('cant-saborizada').value) || 0;
+      const total = min * precioMineral + sab * precioSaborizada;
+      document.getElementById('total-venta').textContent = `Total: ${formatearBs(total)}`;
+    }
+
+    function cambiarCantidad(tipo, delta) {
+      const input = document.getElementById('cant-' + tipo);
+      input.value = Math.max(0, (parseInt(input.value) || 0) + delta);
+      calcularTotalVenta();
+    }
+
+    async function registrarVentaManual() {
+      const fecha = document.getElementById('fecha-venta').value;
+      const clienteId = document.getElementById('cliente-venta').value;
+      const cantMineral = parseInt(document.getElementById('cant-mineral').value) || 0;
+      const cantSaborizada = parseInt(document.getElementById('cant-saborizada').value) || 0;
+      const devueltos = parseInt(document.getElementById('cant-devueltos').value) || 0;
+
+      if (!fecha) return showToast('Selecciona la fecha', 'error');
+      if (cantMineral === 0 && cantSaborizada === 0) return showToast('Ingresa al menos un botellón', 'error');
+      if (cantMineral > stock.mineral) return showToast('Stock insuficiente Mineral', 'error');
+      if (cantSaborizada > stock.saborizada) return showToast('Stock insuficiente Saborizada', 'error');
+
+      const idVenta = crypto.randomUUID();
+      const total = cantMineral * precioMineral + cantSaborizada * precioSaborizada;
+
+      stock.mineral -= cantMineral; stock.saborizada -= cantSaborizada; stock.envasesVacios = (stock.envasesVacios || 0) + devueltos;
+      ventas.push({ id: idVenta, fecha, clienteId, mineral: cantMineral, saborizada: cantSaborizada, envasesDevueltos: devueltos, total });
+      
+      actualizarStockUI();
+      document.getElementById('cant-mineral').value = 0; document.getElementById('cant-saborizada').value = 0; document.getElementById('cant-devueltos').value = 0;
+      calcularTotalVenta(); mostrarDeudaEnvases(); 
+
+      const { error: errVenta } = await db.from('ventas').insert({ id: idVenta, fecha, cliente_id: clienteId || null, mineral: cantMineral, saborizada: cantSaborizada, envases_devueltos: devueltos, total });
+      if (errVenta) return showToast('Error al registrar en nube', 'error');
+      await db.from('stock').upsert({ id: 1, mineral: stock.mineral, saborizada: stock.saborizada, envases_vacios: stock.envasesVacios });
+      
+      showToast('Venta registrada con éxito', 'success');
+      cargarMovimiento();
+      if(clienteId) renderClientList();
+    }
+
+    async function cambiarStock(tipo, delta) {
+      stock[tipo] = Math.max(0, stock[tipo] + delta);
+      actualizarStockUI();
+      await db.from('stock').upsert({ id: 1, mineral: stock.mineral, saborizada: stock.saborizada, envases_vacios: stock.envasesVacios || 0 });
+    }
+
+    function actualizarStockUI() {
+      document.getElementById('stock-mineral').textContent = stock.mineral;
+      document.getElementById('stock-saborizada').textContent = stock.saborizada;
+      document.getElementById('total-envases-fisicos').textContent = stock.mineral + stock.saborizada + (stock.envasesVacios || 0);
+    }
+
+    // ========== 10. CRUD CLIENTES (MODAL) ==========
+    function openClientModal() {
+      editingClientId = null;
+      document.getElementById('modalClientTitle').textContent = 'Nuevo cliente';
+      document.getElementById('clientName').value = '';
+      document.getElementById('clientPhone').value = '';
+      document.getElementById('clientAddress').value = '';
+      document.getElementById('clientFrequency').value = '';
+      document.getElementById('deleteClientContainer').style.display = 'none';
+      document.getElementById('clientSalesHistory').style.display = 'none';
+      openModal('modalClientOverlay');
+    }
+
+    function openEditModal(id) {
+      const client = clients.find(c => c.id === id);
+      if (!client) return;
+      editingClientId = id;
+      document.getElementById('modalClientTitle').textContent = 'Editar cliente';
+      document.getElementById('clientName').value = client.name;
+      document.getElementById('clientPhone').value = client.phone;
+      document.getElementById('clientAddress').value = client.address || '';
+      document.getElementById('clientFrequency').value = client.frequency || '';
+      document.getElementById('deleteClientContainer').style.display = 'block';
+      
+      const container = document.getElementById('clientSalesHistory');
+      const clientSales = ventas.filter(v => v.clienteId === id).sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+      if (clientSales.length === 0) { container.style.display = 'none'; }
+      else {
+        container.style.display = 'block';
+        let html = '<h3 style="margin-bottom:12px; font-size:16px;">Últimas ventas</h3>';
+        clientSales.slice(0, 10).forEach(v => {
+          const fecha = new Date(v.fecha + 'T12:00:00').toLocaleDateString('es-ES', { day:'2-digit', month:'2-digit', year:'numeric' });
+          let detalle = [];
+          if (v.mineral > 0) detalle.push(`${v.mineral} Min`);
+          if (v.saborizada > 0) detalle.push(`${v.saborizada} Sab`);
+          html += `<div class="history-item"><span class="history-date">${fecha}</span><span class="history-detail">${detalle.join(', ') || 'Sin detalle'}</span><span class="history-amount">${formatearBs(v.total)}</span></div>`;
+        });
+        container.innerHTML = html;
+      }
+      openModal('modalClientOverlay');
+    }
+
+    async function saveClient() {
+      const name = document.getElementById('clientName').value.trim();
+      const phone = document.getElementById('clientPhone').value.trim();
+      const address = document.getElementById('clientAddress').value.trim();
+      const frequency = document.getElementById('clientFrequency').value.trim();
+      
+      if (!name || !phone) return showToast('Nombre y teléfono son obligatorios', 'error');
+      
+      const isNew = !editingClientId;
+      const cId = isNew ? crypto.randomUUID() : editingClientId;
+      
+      if (isNew) { clients.push({ id: cId, name, phone, address, frequency: frequency || '' }); } 
+      else { const client = clients.find(c => c.id === cId); if (client) Object.assign(client, { name, phone, address, frequency: frequency || '' }); }
+      
+      llenarSelectClientes(); renderClientList(); closeModal('modalClientOverlay');
+      
+      const { error } = await db.from('clientes').upsert({ id: cId, nombre: name, telefono: phone, direccion: address || null, frecuencia_dias: frequency ? parseInt(frequency) : null });
+      if(!error) showToast(isNew ? 'Cliente guardado' : 'Cliente actualizado', 'success');
+      else showToast('Error al guardar', 'error');
+    }
+
+    async function deleteClient() {
+      if (!editingClientId) return;
+      if (confirm('¿Eliminar este cliente de forma permanente?')) {
+        const cId = editingClientId;
+        clients = clients.filter(c => c.id !== cId);
+        llenarSelectClientes(); renderClientList(); closeModal('modalClientOverlay');
+        const { error } = await db.from('clientes').delete().eq('id', cId);
+        if(!error) showToast('Cliente eliminado', 'info');
+      }
+    }
+
+    // ========== 11. GASTOS ==========
+    function abrirModalGasto() {
+      document.getElementById('fecha-gasto').value = new Date().toISOString().split('T')[0];
+      document.getElementById('desc-gasto').value = '';
+      document.getElementById('monto-gasto').value = '';
+      renderGastosList();
+      openModal('modalGastoOverlay');
+    }
+
+    async function guardarGasto() {
+      const fecha = document.getElementById('fecha-gasto').value;
+      const desc = document.getElementById('desc-gasto').value.trim();
+      const monto = parseFloat(document.getElementById('monto-gasto').value);
+
+      if(!fecha || !desc || isNaN(monto) || monto <= 0) return showToast('Completa todos los campos', 'error');
+
+      const id = crypto.randomUUID();
+      gastos.push({ id, fecha, desc, monto });
+      cargarMovimiento(); renderGastosList(); 
+      document.getElementById('desc-gasto').value = ''; document.getElementById('monto-gasto').value = '';
+
+      const { error } = await db.from('gastos').insert({ id, fecha, descripcion: desc, monto });
+      if (!error) showToast('Gasto registrado', 'success');
+    }
+
+    async function eliminarGasto(gastoId) {
+      gastos = gastos.filter(g => g.id !== gastoId);
+      cargarMovimiento(); renderGastosList();
+      await db.from('gastos').delete().eq('id', gastoId);
+      showToast('Gasto eliminado', 'info');
+    }
+
+    function renderGastosList() {
+      const container = document.getElementById('gastosListContainer');
+      const mes = parseInt(document.getElementById('mes').value);
+      const anio = parseInt(document.getElementById('anio').value);
+      
+      const gastosMes = gastos.filter(g => {
+        const d = new Date(g.fecha + 'T12:00:00'); return d.getMonth() === mes && d.getFullYear() === anio;
+      }).sort((a,b) => new Date(b.fecha) - new Date(a.fecha));
+
+      if (gastosMes.length === 0) {
+        container.innerHTML = '<p style="text-align:center; color:var(--text-secondary); padding:20px;">No hay gastos este mes</p>';
+        return;
+      }
+
+      let html = '<h3 style="margin-bottom:12px; font-size:16px;">Gastos del mes</h3>';
+      gastosMes.forEach(g => {
+        const fecha = new Date(g.fecha + 'T12:00:00').toLocaleDateString('es-ES', { day:'2-digit', month:'2-digit' });
+        html += `
+          <div class="gasto-item">
+            <span class="gasto-date">${fecha}</span>
+            <span class="gasto-desc">${escapeHtml(g.desc)}</span>
+            <span class="gasto-monto">-${formatearBs(g.monto)}</span>
+            <button class="gasto-delete-btn" onclick="eliminarGasto('${g.id}')">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            </button>
+          </div>`;
+      });
+      container.innerHTML = html;
+    }
+
+    // ========== 12. PERFIL Y SETTINGS ==========
+    function abrirModalPrecios() {
+      document.getElementById('precioMineralInput').value = precioMineral;
+      document.getElementById('precioSaborizadaInput').value = precioSaborizada;
+      document.getElementById('costoMineralInput').value = costoProdMineral;
+      document.getElementById('costoSaborizadaInput').value = costoProdSaborizada;
+      openModal('modalPreciosOverlay');
+    }
+
+    async function guardarPrecios() {
+      const pm = parseFloat(document.getElementById('precioMineralInput').value);
+      const ps = parseFloat(document.getElementById('precioSaborizadaInput').value);
+      const cm = parseFloat(document.getElementById('costoMineralInput').value);
+      const cs = parseFloat(document.getElementById('costoSaborizadaInput').value);
+      
+      if (isNaN(pm) || isNaN(ps) || isNaN(cm) || isNaN(cs) || pm < 0 || ps < 0 || cm < 0 || cs < 0) return showToast('Valores inválidos', 'error');
+
+      precioMineral = pm; precioSaborizada = ps; costoProdMineral = cm; costoProdSaborizada = cs;
+      closeModal('modalPreciosOverlay');
+
+      const { error } = await db.from('configuracion').upsert({ id: 1, precio_mineral: pm, precio_saborizada: ps, costo_mineral: cm, costo_saborizada: cs });
+      if (!error) { showToast('Precios actualizados', 'success'); cargarMovimiento(); calcularTotalVenta(); }
+    }
+
+   async function subirLogoPerfil(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  // Previsualizar en el perfil
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    document.getElementById('profile-img').src = e.target.result;
+    localStorage.setItem('agua_avatar', e.target.result);
+  };
+  reader.readAsDataURL(file);
+
+  // Subir a Supabase Storage (el mismo bucket, misma ruta)
+  const { error } = await db.storage
+    .from('assets')
+    .upload('repartidor-icon.png', file, {
+      cacheControl: '3600',
+      upsert: true
+    });
+
+  if (error) {
+    showToast('Error al subir imagen: ' + error.message, 'error');
+  } else {
+    showToast('Logo actualizado con éxito', 'success');
+  }
+}
+
+    function copiarDirectLink() {
+      let storeCode = localStorage.getItem('aguabol_store_code');
+      if (!storeCode) {
+        storeCode = 'AGUA-' + Math.random().toString(36).substring(2, 6).toUpperCase();
+        localStorage.setItem('aguabol_store_code', storeCode);
+      }
+      
+      // Generar enlace público fijo para el portal del cliente en Netlify
+      const urlBase = "https://celadon-moonbeam-5c1af4.netlify.app";
+      
+      // CORRECCIÓN: Se eliminó '/cliente.html' para que apunte directamente al dominio raíz
+      const link = `${urlBase}?store=${storeCode}`;
+      
+      if (navigator.clipboard) { 
+        navigator.clipboard.writeText(link).then(() => showToast(`Link copiado`, 'success')); 
+      } else { 
+        const ti = document.createElement("input"); 
+        ti.value = link; 
+        document.body.appendChild(ti); 
+        ti.select(); 
+        document.execCommand("copy"); 
+        document.body.removeChild(ti); 
+        showToast(`Link copiado`, 'success'); 
+      }
+    }
+  
+
+
+    // ========== 13. FINANZAS (GRÁFICOS) ==========
+    function cargarMovimiento() {
+      const mes = parseInt(document.getElementById('mes').value);
+      const anio = parseInt(document.getElementById('anio').value);
+      
+      const ventasMes = ventas.filter(v => { const d = new Date(v.fecha + 'T12:00:00'); return d.getMonth() === mes && d.getFullYear() === anio; });
+      const gastosMes = gastos.filter(g => { const d = new Date(g.fecha + 'T12:00:00'); return d.getMonth() === mes && d.getFullYear() === anio; });
+
+      let totalIngresos = 0, costoProduccionTotal = 0, totalGastos = gastosMes.reduce((acc, g) => acc + g.monto, 0);
+      let datosDiarios = {};
+
+      ventasMes.forEach(v => {
+        const dia = new Date(v.fecha + 'T12:00:00').getDate();
+        if(!datosDiarios[dia]) datosDiarios[dia] = 0;
+        totalIngresos += v.total;
+        costoProduccionTotal += (v.mineral * costoProdMineral) + (v.saborizada * costoProdSaborizada);
+        datosDiarios[dia] += v.total;
+      });
+
+      const utilidadNeta = totalIngresos - costoProduccionTotal - totalGastos;
+      document.getElementById('utilidad-neta').style.color = utilidadNeta >= 0 ? 'var(--green)' : 'var(--destructive)';
+      animarNumero('total-mes', totalIngresos, 1200);
+      animarNumero('utilidad-neta', utilidadNeta, 1200);
+
+      let barrasHTML = '';
+      const maxDiario = Math.max(...Object.values(datosDiarios), 1);
+      const diasEnMes = new Date(anio, mes + 1, 0).getDate();
+      const hoy = new Date();
+      const esMesActual = (mes === hoy.getMonth() && anio === hoy.getFullYear());
+      const diaActual = hoy.getDate();
+
+      for (let dia = 1; dia <= diasEnMes; dia++) {
+        const totalDia = datosDiarios[dia] || 0;
+        const altura = Math.min((totalDia / maxDiario) * 100, 100);
+        const esHoy = esMesActual && dia === diaActual;
+        const idDia = esHoy ? 'bar-dia-actual' : '';
+        const claseLabel = esHoy ? 'bar-label hoy' : 'bar-label';
+        barrasHTML += `<div class="bar-item" id="${idDia}"><div class="bar" style="height:0px;" data-height="${altura}"></div><span class="${claseLabel}">${dia}</span></div>`;
+      }
+      
+      const grafico = document.getElementById('grafico');
+      grafico.innerHTML = barrasHTML;
+
+      setTimeout(() => { grafico.querySelectorAll('.bar').forEach(bar => bar.style.height = bar.getAttribute('data-height') + 'px'); }, 50);
+
+      const container = document.getElementById('chart-container-scroll');
+      if (esMesActual) setTimeout(() => { const barActual = document.getElementById('bar-dia-actual'); if (barActual) barActual.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' }); }, 300);
+      else container.scrollLeft = 0;
+    }
+
+    // ========== 14. INICIALIZACIÓN Y SUBSCRIPCIONES ==========
+    async function escucharRealtime() {
+      // 1. Escuchar Pedidos (Para Notificaciones y En Vivo)
+      db.channel('public:pedidos')
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'pedidos' }, async (payload) => {
+          // Cuando el cliente pide, buscamos sus datos y lo mostramos
+          const { data: cliInfo } = await db.from('clientes').select('*').eq('id', payload.new.cliente_id).single();
+          payload.new.clientes = cliInfo;
+                    pedidosActivos.unshift(payload.new);
+          
+          // NUEVO: Notificación local nativa (suena incluso con la app en segundo plano)
+          try {
+            await LocalNotifications.schedule({
+              notifications: [{
+                id: new Date().getTime(),
+                title: '¡Nuevo pedido!',
+                body: cliInfo ? `${cliInfo.nombre} ha solicitado un pedido` : 'Nuevo pedido entrante',
+                sound: 'default',
+                smallIcon: 'ic_launcher',
+                iconColor: '#0ea5e9'
+              }]
+            });
+          } catch(e) {}
+          showToast('¡NUEVO PEDIDO RECIBIDO! 🔔');
+          renderPedidos();
+        })
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'pedidos' }, (payload) => {
+          // Cuando un pedido cambia de estado (o se le asigna chofer)
+          const idx = pedidosActivos.findIndex(p => p.id === payload.new.id);
+          
+          if (idx !== -1) {
+            const estadoAnterior = pedidosActivos[idx].estado;
+            pedidosActivos[idx].estado = payload.new.estado;
+            pedidosActivos[idx].chofer_id = payload.new.chofer_id; // Actualizar chofer si aplica
+            
+            // LA MAGIA: Si el CHOFER marcó entregado remotamente (Pasó de 'en_camino' a 'entregado')
+            if (payload.new.estado === 'entregado' && estadoAnterior !== 'entregado') {
+                showToast('Un chofer ha entregado un pedido ✅', 'success');
+                // Forzamos la lógica de cobro e inventario automática
+                completarPedido(payload.new.id);
+            } 
+            else if (payload.new.estado === 'cancelado') {
+                pedidosActivos.splice(idx, 1);
+                renderPedidos();
+            } else {
+                renderPedidos();
+            }
+          }
+        })
+        .subscribe();
+
+      // 2. Escuchar Clientes (Para el CRM)
+      db.channel('public:clientes')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'clientes' }, (payload) => {
+            if (payload.eventType === 'INSERT') {
+              const nCli = { id: payload.new.id, name: payload.new.nombre, phone: payload.new.telefono, address: payload.new.direccion, frequency: payload.new.frecuencia_dias ? payload.new.frecuencia_dias.toString() : '' };
+              if(!clients.some(c => c.id === nCli.id)) clients.push(nCli);
+            } else if (payload.eventType === 'UPDATE') {
+              const idx = clients.findIndex(c => c.id === payload.new.id);
+              if (idx !== -1) clients[idx] = { id: payload.new.id, name: payload.new.nombre, phone: payload.new.telefono, address: payload.new.direccion, frequency: payload.new.frecuencia_dias ? payload.new.frecuencia_dias.toString() : '' };
+            } else if (payload.eventType === 'DELETE') {
+              clients = clients.filter(c => c.id !== payload.old.id);
+            }
+            renderClientList(); llenarSelectClientes();
+        }).subscribe();
+    }
+
+          // ========== REGISTRO DE NOTIFICACIONES PUSH (FCM) ==========
+// ========== REGISTRO DE NOTIFICACIONES PUSH (FCM) ==========
+async function registrarPush() {
+  showToast('Iniciando registro push...', 'info');
+
+  const PushNotifications = Capacitor.Plugins.PushNotifications;
+  if (!PushNotifications) {
+    showToast('❌ Plugin PushNotifications no encontrado', 'error');
+    console.error('Plugin PushNotifications no disponible');
+    return;
+  }
+
+  // Solicitar permiso
+  let permiso = await PushNotifications.checkPermissions();
+  showToast(`Permiso actual: ${permiso.receive}`, 'info');
+
+  if (permiso.receive !== 'granted') {
+    permiso = await PushNotifications.requestPermissions();
+    showToast(`Permiso solicitado: ${permiso.receive}`, 'info');
+  }
+
+  if (permiso.receive !== 'granted') {
+    showToast('❌ Permiso denegado. Ve a Ajustes > Apps > AguaBol > Notificaciones y actívalas', 'error');
+    return;
+  }
+
+  // Registrar
+  try {
+    await PushNotifications.register();
+    showToast('✅ Registro push completado. Esperando token...', 'success');
+  } catch (e) {
+    showToast('❌ Error al registrar: ' + e.message, 'error');
+    return;
+  }
+
+  // Escuchar token
+  PushNotifications.addListener('registration', async (token) => {
+    showToast('📱 Token recibido', 'success');
+    const adminUserId = 'admin-unico';
+
+    const { error } = await db.from('dispositivos').upsert({
+      user_id: adminUserId,
+      fcm_token: token.value,
+      plataforma: 'android',
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'user_id' });
+
+    if (error) {
+      showToast('❌ Error guardando token: ' + error.message, 'error');
+      console.error('Error:', error);
+    } else {
+      showToast('✅ Token guardado en Supabase', 'success');
+    }
+  });
+
+  PushNotifications.addListener('pushNotificationReceived', (notif) => {
+    showToast('🔔 Push recibida en primer plano', 'info');
+    cargarDatosCompletos();
+  });
+
+  PushNotifications.addListener('pushNotificationActionPerformed', (notif) => {
+    showToast('👆 App abierta desde notificación', 'info');
+    cargarDatosCompletos();
+  });
+      }
+async function previewAndUploadLogo(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  // Previsualizar en el tag <img>
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const preview = document.getElementById('preview-logo');
+    preview.src = e.target.result;
+    preview.style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+
+  // Subir a Supabase Storage (reemplaza si ya existe)
+  const { error } = await db.storage
+    .from('assets')
+    .upload('repartidor-icon.png', file, {
+      cacheControl: '3600',
+      upsert: true
+    });
+
+  if (error) {
+    showToast('Error al subir imagen: ' + error.message, 'error');
+  } else {
+    showToast('Logo actualizado con éxito', 'success');
+    // Guardar la URL pública en localStorage (opcional)
+    const publicUrl = db.storage.from('assets').getPublicUrl('repartidor-icon.png').data.publicUrl;
+    localStorage.setItem('aguabol_logo_url', publicUrl);
+  }
+}
+
+          function cargarLogoActual() {
+  const publicUrl = db.storage.from('assets').getPublicUrl('repartidor-icon.png').data.publicUrl;
+  const preview = document.getElementById('profile-img');
+  // Verificar si la imagen existe en el storage
+  const img = new Image();
+  img.onload = () => {
+    preview.src = publicUrl;
+    localStorage.setItem('agua_avatar', publicUrl); // actualizar cache local
+  };
+  img.onerror = () => {
+    // Si no hay imagen, dejamos la que haya guardada en localStorage (o el ícono por defecto)
+    const saved = localStorage.getItem('agua_avatar');
+    if (saved) preview.src = saved;
+  };
+  img.src = publicUrl;
+}
+          
+    document.addEventListener('DOMContentLoaded', async () => {
+      document.getElementById('fecha-venta').value = new Date().toISOString().split('T')[0];
+      const today = new Date();
+      document.getElementById('mes').value = today.getMonth();
+      document.getElementById('anio').value = today.getFullYear();
+      
+      // PEDIR PERMISO DE UBICACIÓN
+      try {
+        const geoPlugin = Capacitor.Plugins.Geolocation;
+        if (geoPlugin) {
+          const permResult = await geoPlugin.requestPermissions();
+          console.log('Permiso ubicación:', permResult.location);
+        }
+      } catch(e) { console.log('Error solicitando permiso de ubicación', e); }
+
+      // NUEVO: PEDIR PERMISO DE NOTIFICACIONES (Obligatorio en Android 13+)
+      try {
+        const notifPlugin = Capacitor.Plugins.LocalNotifications;
+        if (notifPlugin) {
+          const notifPerm = await notifPlugin.requestPermissions();
+          console.log('Permiso notificaciones:', notifPerm.display);
+        }
+      } catch(e) { console.log('Error solicitando permiso de notificaciones', e); }
+
+      const savedAvatar = localStorage.getItem('agua_avatar');
+      if (savedAvatar) document.getElementById('profile-img').src = savedAvatar;
+
+      await cargarDatosCompletos();
+      escucharRealtime();
+      registrarPush();
+       cargarLogoActual();
+    });
+
   </script>
 </body>
 </html>
