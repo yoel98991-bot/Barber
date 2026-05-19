@@ -372,7 +372,7 @@
         cargarLealtad();
       }).subscribe();
             
-      // 👇 AQUÍ ACTIVAMOS LA ANTENA DE NOTIFICACIONES AL INICIAR SESIÓN 👇
+      // 👇 ACTIVAMOS LA INSTALACIÓN Y SUBSCRIPCIÓN NATIVA WEB PUSH VAPID AL INICIAR SESIÓN 👇
       registrarPushCliente();
     }
 
@@ -610,7 +610,7 @@
       });
       
       if (!error) { 
-        showToast("¡Pedido confirmado!"); 
+        showToast("¡Pedido confirmed!"); 
         document.getElementById('qty-min').innerText="1"; 
         document.getElementById('qty-sab').innerText="0"; 
         calcularTotal(); 
@@ -669,45 +669,70 @@
     function cerrarSesion() { localStorage.clear(); window.location.reload(); }
     function showToast(m, err=false) { const t = document.getElementById('toast'); document.getElementById('toast-msg').innerText = m; t.style.display='flex'; setTimeout(()=>t.style.display='none', 3000); }
 
-    // ========== REGISTRO DE NOTIFICACIONES PARA EL CLIENTE (VERSIÓN NAVEGADOR) ==========
-    async function registrarPushCliente() {
-      // 1. Verificamos si el navegador soporta notificaciones web
-      if (!("Notification" in window)) {
-        console.log("Este navegador no soporta notificaciones web.");
-        return; 
+    // === FUNCIÓN AUXILIAR PARA TRANSFORMAR LA CLAVE VAPID PÚBLICA ===
+    function urlBase64ToUint8Array(base64String) {
+      const padding = '='.repeat((4 - base64String.length % 4) % 4);
+      const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+      const rawData = window.atob(base64);
+      const outputArray = new Uint8Array(rawData.length);
+      for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
       }
+      return outputArray;
+    }
 
+    // ========== REGISTRO DE NOTIFICACIONES PARA EL CLIENTE (VERSIÓN WEB PUSH PROTOCOL - SIN FIREBASE FRONTEND) ==========
+    async function registrarPushCliente() {
       try {
-        // 2. Pedimos permiso al cliente a través del cuadro de diálogo nativo del navegador
+        // 1. Verificamos soporte en el navegador
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+          console.log('Este navegador no soporta notificaciones push nativas.');
+          return;
+        }
+
+        // 2. Solicitamos los permisos nativos en pantalla
         let permStatus = Notification.permission;
-        
         if (permStatus === 'default') {
           permStatus = await Notification.requestPermission();
         }
         
         if (permStatus !== 'granted') {
-          console.log("El usuario denegó los permisos de notificaciones del navegador.");
+          console.log("El usuario denegó los permisos de notificaciones en el navegador.");
           return; 
         }
 
-        console.log("Permisos de notificaciones concedidos por el navegador.");
+        console.log("Permisos concedidos. Registrando Service Worker...");
+        
+        // 3. Registramos el archivo Service Worker de fondo (sw.js)
+        const registration = await navigator.serviceWorker.register('/sw.js');
+        
+        // 4. Solicitamos la subscripción Push usando tu clave pública nativa VAPID
+        let subscription = await registration.pushManager.getSubscription();
+        if (!subscription) {
+          const publicVapidKey = 'BDSv-QbrjeZnh4uWUGgSZ09GEb5Pk6jVAeWGlSieuMQzORmfhc_0K3cpp99TumQMOmF5ggY7lI0lgD0tX7-HJoQ';
+          subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(publicVapidKey)
+          });
+        }
 
-        // 3. Guardamos el registro en la BD simulando la estructura anterior
-        // Nota: Para notificaciones Push Reales en web, necesitarás Firebase SDK y un Service Worker.
-        // Aquí guardamos la plataforma como 'web' para no alterar el esquema de tu BD.
+        // 5. Guardamos el string estructurado en formato JSON dentro de tu tabla de Supabase
         if (usuarioActual && usuarioActual.id) {
           const { error } = await db.from('dispositivos').upsert({ 
             user_id: usuarioActual.id, 
-            fcm_token: 'web-token-pendiente', // Token dummy para mantener compatibilidad
+            fcm_token: JSON.stringify(subscription), // Guardamos el objeto completo de subscripción
             plataforma: 'web', 
             updated_at: new Date().toISOString() 
           }, { onConflict: 'user_id' });
           
-          if(!error) console.log("Dispositivo web registrado exitosamente en la base de datos.");
+          if(!error) {
+            console.log("Suscripción nativa Web Push registrada con éxito en Supabase.");
+          } else {
+            console.error("Error al almacenar la suscripción push:", error);
+          }
         }
-        
       } catch (error) {
-        console.error("Error solicitando permisos de notificaciones web:", error);
+        console.error("Error en el flujo de activación de notificaciones web:", error);
       }
     }
 
