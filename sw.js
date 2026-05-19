@@ -5,15 +5,25 @@ self.addEventListener('push', function(event) {
     
     const options = {
       body: data.body,
-      // icon: '/ruta-a-tu-logo.png', // Opcional: logo de la app
-      badge: '/ruta-a-tu-logo.png',   // Opcional: icono pequeño
-      vibrate: [200, 100, 200, 100, 200], // Patrón de vibración
-      data: { url: '/' } // Para abrir la web si tocan la notificación
+      badge: '/ruta-a-tu-logo.png',
+      vibrate: [200, 100, 200, 100, 200],
+      data: { url: '/' }
     };
 
-    event.waitUntil(
-      self.registration.showNotification(data.title, options)
-    );
+    // 1. Mostramos la notificación del sistema
+    const promiseNotificacion = self.registration.showNotification(data.title, options);
+
+    // 2. EXTRA PARA DEPURAR: Enviamos un mensaje a la web abierta
+    const promiseMensaje = clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
+      windowClients.forEach(client => {
+        client.postMessage({
+          type: 'PUSH_DEBUG',
+          mensaje: `Llegó Push: ${data.title}`
+        });
+      });
+    });
+
+    event.waitUntil(Promise.all([promiseNotificacion, promiseMensaje]));
   }
 });
 
