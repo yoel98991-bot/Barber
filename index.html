@@ -681,60 +681,76 @@
       return outputArray;
     }
 
-    // ========== REGISTRO DE NOTIFICACIONES PARA EL CLIENTE (VERSIÓN WEB PUSH PROTOCOL - SIN FIREBASE FRONTEND) ==========
-    async function registrarPushCliente() {
-      try {
-        // 1. Verificamos soporte en el navegador
-        if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-          console.log('Este navegador no soporta notificaciones push nativas.');
-          return;
-        }
 
-        // 2. Solicitamos los permisos nativos en pantalla
-        let permStatus = Notification.permission;
-        if (permStatus === 'default') {
-          permStatus = await Notification.requestPermission();
-        }
-        
-        if (permStatus !== 'granted') {
-          console.log("El usuario denegó los permisos de notificaciones en el navegador.");
-          return; 
-        }
+// ========== REGISTRO DE NOTIFICACIONES CON TOASTS DE DEPURACIÓN ==========
+async function registrarPushCliente() {
+  try {
+    showToast("⚙️ Iniciando Push nativo...");
+    
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      setTimeout(() => showToast("❌ Tu navegador no soporta Push", true), 1000);
+      return;
+    }
 
-        console.log("Permisos concedidos. Registrando Service Worker...");
-        
-        // 3. Registramos el archivo Service Worker de fondo (sw.js)
-        const registration = await navigator.serviceWorker.register('/sw.js');
-        
-        // 4. Solicitamos la subscripción Push usando tu clave pública nativa VAPID
-        let subscription = await registration.pushManager.getSubscription();
-        if (!subscription) {
-          const publicVapidKey = 'BDSv-QbrjeZnh4uWUGgSZ09GEb5Pk6jVAeWGlSieuMQzORmfhc_0K3cpp99TumQMOmF5ggY7lI0lgD0tX7-HJoQ';
-          subscription = await registration.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(publicVapidKey)
-          });
-        }
+    let permStatus = Notification.permission;
+    if (permStatus === 'default') {
+      setTimeout(() => showToast("⏳ Pidiendo permisos..."), 1000);
+      permStatus = await Notification.requestPermission();
+    }
+    
+    if (permStatus !== 'granted') {
+      setTimeout(() => showToast("❌ Permisos denegados", true), 1000);
+      return; 
+    }
 
-        // 5. Guardamos el string estructurado en formato JSON dentro de tu tabla de Supabase
-        if (usuarioActual && usuarioActual.id) {
-          const { error } = await db.from('dispositivos').upsert({ 
-            user_id: usuarioActual.id, 
-            fcm_token: JSON.stringify(subscription), // Guardamos el objeto completo de subscripción
-            plataforma: 'web', 
-            updated_at: new Date().toISOString() 
-          }, { onConflict: 'user_id' });
-          
-          if(!error) {
-            console.log("Suscripción nativa Web Push registrada con éxito en Supabase.");
-          } else {
-            console.error("Error al almacenar la suscripción push:", error);
-          }
-        }
-      } catch (error) {
-        console.error("Error en el flujo de activación de notificaciones web:", error);
+    setTimeout(() => showToast("✅ Permisos OK. Registrando SW..."), 1000);
+    const registration = await navigator.serviceWorker.register('/sw.js');
+    
+    setTimeout(() => showToast("✅ SW Registrado. Pidiendo Suscripción..."), 2000);
+    let subscription = await registration.pushManager.getSubscription();
+    
+    if (!subscription) {
+      const publicVapidKey = 'BDSv-QbrjeZnh4uWUGgSZ09GEb5Pk6jVAeWGlSieuMQzORmfhc_0K3cpp99TumQMOmF5ggY7lI0lgD0tX7-HJoQ';
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicVapidKey)
+      });
+      setTimeout(() => showToast("✅ ¡Suscripción VAPID generada!"), 3000);
+    } else {
+      setTimeout(() => showToast("✅ Suscripción VAPID ya existía"), 3000);
+    }
+
+    if (usuarioActual && usuarioActual.id) {
+      setTimeout(() => showToast("⏳ Guardando en base de datos..."), 4000);
+      
+      const { error } = await db.from('dispositivos').upsert({ 
+        user_id: usuarioActual.id, 
+        fcm_token: JSON.stringify(subscription), 
+        plataforma: 'web', 
+        updated_at: new Date().toISOString() 
+      }, { onConflict: 'user_id' });
+      
+      if(!error) {
+        setTimeout(() => showToast("🚀 ¡Push listo y guardado en BD!"), 5000);
+      } else {
+        setTimeout(() => showToast("❌ Error BD: " + error.message, true), 5000);
       }
     }
+  } catch (error) {
+    showToast("❌ Error fatal: " + error.message, true);
+  }
+}
+
+// Escuchamos los mensajes que envíe el Service Worker para depurar
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('message', event => {
+    if (event.data && event.data.type === 'PUSH_DEBUG') {
+      showToast("🔔 " + event.data.mensaje);
+    }
+  });
+}
+
+    
 
     document.addEventListener('DOMContentLoaded', checkAuth);
   </script>
