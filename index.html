@@ -685,28 +685,38 @@
 // ========== REGISTRO DE NOTIFICACIONES CON TOASTS DE DEPURACIÓN ==========
 async function registrarPushCliente() {
   try {
-    showToast("⚙️ Iniciando Push nativo...");
-    
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-      setTimeout(() => showToast("❌ Tu navegador no soporta Push", true), 1000);
-      return;
+    showToast("⚙️ Verificando sistema...");
+
+    // 1. Verificamos si la conexión es segura (Obligatorio para Push)
+    if (!window.isSecureContext) {
+      return showToast("❌ Error: Requiere conexión HTTPS", true);
     }
 
+    // 2. Verificamos si está en iOS sin "Agregar a inicio"
+    if (!('Notification' in window)) {
+      return showToast("❌ iOS: Debes 'Agregar a inicio' primero", true);
+    }
+
+    // 3. Verificamos soporte general (Evita navegadores de WhatsApp/Telegram)
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      return showToast("❌ Ábrelo en Chrome/Safari normal", true);
+    }
+
+    showToast("⏳ Solicitando permisos...");
     let permStatus = Notification.permission;
+    
     if (permStatus === 'default') {
-      setTimeout(() => showToast("⏳ Pidiendo permisos..."), 1000);
       permStatus = await Notification.requestPermission();
     }
     
     if (permStatus !== 'granted') {
-      setTimeout(() => showToast("❌ Permisos denegados", true), 1000);
-      return; 
+      return showToast("❌ Permiso denegado por ti", true); 
     }
 
-    setTimeout(() => showToast("✅ Permisos OK. Registrando SW..."), 1000);
+    showToast("✅ Registrando conexión oculta...");
     const registration = await navigator.serviceWorker.register('/sw.js');
     
-    setTimeout(() => showToast("✅ SW Registrado. Pidiendo Suscripción..."), 2000);
+    showToast("⏳ Creando llave de seguridad...");
     let subscription = await registration.pushManager.getSubscription();
     
     if (!subscription) {
@@ -715,13 +725,10 @@ async function registrarPushCliente() {
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(publicVapidKey)
       });
-      setTimeout(() => showToast("✅ ¡Suscripción VAPID generada!"), 3000);
-    } else {
-      setTimeout(() => showToast("✅ Suscripción VAPID ya existía"), 3000);
     }
 
     if (usuarioActual && usuarioActual.id) {
-      setTimeout(() => showToast("⏳ Guardando en base de datos..."), 4000);
+      showToast("⏳ Guardando en base de datos...");
       
       const { error } = await db.from('dispositivos').upsert({ 
         user_id: usuarioActual.id, 
@@ -731,15 +738,16 @@ async function registrarPushCliente() {
       }, { onConflict: 'user_id' });
       
       if(!error) {
-        setTimeout(() => showToast("🚀 ¡Push listo y guardado en BD!"), 5000);
+        showToast("🚀 ¡Push listo y conectado!");
       } else {
-        setTimeout(() => showToast("❌ Error BD: " + error.message, true), 5000);
+        showToast("❌ Error BD: " + error.message, true);
       }
     }
   } catch (error) {
-    showToast("❌ Error fatal: " + error.message, true);
+    showToast("❌ Error: " + error.message, true);
   }
 }
+
 
 // Escuchamos los mensajes que envíe el Service Worker para depurar
 if ('serviceWorker' in navigator) {
