@@ -6,7 +6,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="theme-color" content="#F2F2F7">
-  <title>AguaBol - Cliente</title>
+  <title>AguaBol - Cliente Web</title>
   
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   
@@ -30,14 +30,13 @@
     }
     
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif; -webkit-tap-highlight-color: transparent; -webkit-font-smoothing: antialiased; }
-    
     html, body { width: 100%; height: 100dvh; overflow: hidden; background: var(--bg); color: var(--text-main); overscroll-behavior-y: none; }
     
     /* ========== ANIMACIONES ========== */
     @keyframes fadeSlideUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-    /* ========== ONBOARDING ========== */
+    /* ========== ONBOARDING / AUTH ========== */
     #auth-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 1000; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 24px; transition: opacity 0.4s ease, transform 0.4s ease; }
     #auth-screen.hidden { opacity: 0; transform: scale(1.02); pointer-events: none; }
     .auth-card { width: 100%; max-width: 360px; text-align: center; }
@@ -58,7 +57,7 @@
     .header-subtitle { font-size: 13px; font-weight: 600; color: var(--tint); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
     .avatar-mini { width: 38px; height: 38px; border-radius: 19px; background: #E5E5EA; color: var(--tint); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px; }
 
-    .screen { display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: calc(env(safe-area-inset-top) + 100px) 20px calc(env(safe-area-inset-bottom) + 120px) 20px; }
+    .screen { display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: calc(env(safe-area-inset-top) + 100px) 20px calc(env(safe-area-inset-bottom) + 220px) 20px; }
     .screen.active { display: block; animation: fadeSlideUp 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) forwards; }
 
     /* ========== LISTAS iOS ========== */
@@ -75,63 +74,24 @@
     .stepper-btn { width: 32px; height: 32px; border: none; background: transparent; font-size: 20px; color: var(--tint); font-weight: 400; cursor: pointer; display: flex; align-items: center; justify-content: center; }
     .stepper-val { font-size: 16px; font-weight: 600; width: 30px; text-align: center; }
 
-    /* ========== RASTREO LIVE ========== */
-    #tracking-card { display: none; background: var(--card); border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 24px; box-shadow: 0 10px 40px -10px rgba(0,0,0,0.1); }
-    #mapa-cliente { width: 100%; height: 320px; background: #E5E5EA; z-index: 1;}
-    .live-status { padding: 16px; background: rgba(255,255,255,0.9); backdrop-filter: blur(10px); position: absolute; top: 16px; left: 16px; right: 16px; border-radius: 100px; z-index: 10; display: flex; align-items: center; gap: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
-    .live-dot { width: 10px; height: 10px; background: var(--green); border-radius: 50%; animation: pulseLive 1.5s infinite; }
-    @keyframes pulseLive { 0% { box-shadow: 0 0 0 0 rgba(52, 199, 89, 0.6); } 70% { box-shadow: 0 0 0 8px rgba(52, 199, 89, 0); } 100% { box-shadow: 0 0 0 0 rgba(52, 199, 89, 0); } }
+    /* ========== MODAL SABORES ========== */
+    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); z-index: 9999; display: flex; justify-content: center; align-items: flex-end; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
+    .modal-overlay.visible { opacity: 1; pointer-events: auto; }
+    .modal-card { background: white; width: 100%; border-radius: 24px 24px 0 0; padding: 24px; padding-bottom: calc(env(safe-area-inset-bottom) + 24px); transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); max-height: 85vh; display: flex; flex-direction: column; }
+    .modal-overlay.visible .modal-card { transform: translateY(0); }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .modal-title { font-size: 20px; font-weight: 700; }
+    .sabores-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; overflow-y: auto; margin-bottom: 24px; padding: 4px; }
+    .sabor-btn { border: 2px solid #F2F2F7; background: #F2F2F7; border-radius: 12px; padding: 16px 8px; font-size: 13px; font-weight: 600; color: var(--text-main); cursor: pointer; transition: all 0.2s; text-align: center; }
+    .sabor-btn.active { border-color: var(--gold); background: rgba(255, 149, 0, 0.1); color: var(--gold); }
+    .sabor-lista-text { font-size: 13px; color: var(--gold); font-weight: 500; margin-top: 4px; line-height: 1.3; }
 
-    /* ========== TARJETA LEALTAD ========== */
-    .wallet-card { 
-      background: linear-gradient(135deg, #1C1C1E, #3A3A3C); 
-      border-radius: 20px; padding: 24px; color: white; position: relative; overflow: hidden; 
-      box-shadow: 0 15px 30px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.1); margin-top: 10px; 
-    }
-    .wallet-card::before {
-      content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
-      background: linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(255,255,255,0.05) 50%, rgba(255,255,255,0) 100%);
-      transform: rotate(30deg); pointer-events: none;
-    }
-    
-    .stamps-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-top: 24px; position: relative; z-index: 2; }
-    
-    .stamp-spot { 
-      aspect-ratio: 1; border-radius: 50%; border: 1.5px solid rgba(255,255,255,0.15); 
-      display: flex; align-items: center; justify-content: center; 
-      background: rgba(0,0,0,0.2);
-    }
-
-    .stamp-spot.filled { 
-      background: rgba(0,0,0,0.2); 
-      border-color: rgba(255,255,255,0.15); 
-      animation: fillStamp 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; 
-    }
-    .stamp-spot.free.filled { 
-      background: rgba(0,0,0,0.2); 
-      border-color: var(--gold); 
-      animation: fillFreeStamp 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; 
-    }
-    .stamp-spot.free { border-color: var(--gold); }
-
-    @keyframes fillStamp {
-      0% { transform: scale(1); background: rgba(0,0,0,0.2); border-color: rgba(255,255,255,0.15); }
-      50% { transform: scale(1.15); background: var(--tint); border-color: var(--tint); box-shadow: 0 0 15px rgba(14, 165, 233, 0.6); }
-      100% { transform: scale(1); background: var(--tint); border-color: var(--tint); }
-    }
-    @keyframes fillFreeStamp {
-      0% { transform: scale(1); background: rgba(0,0,0,0.2); border-color: var(--gold); }
-      50% { transform: scale(1.15); background: var(--gold); border-color: var(--gold); box-shadow: 0 0 15px rgba(255, 149, 0, 0.6); }
-      100% { transform: scale(1); background: var(--gold); border-color: var(--gold); }
-    }
-
-    .stamp-spot svg { opacity: 0.2; transform: scale(0.8); }
-    .stamp-spot.filled svg { animation: popIcon 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
-    
-    @keyframes popIcon {
-      0% { opacity: 0.2; transform: scale(0.5); }
-      100% { opacity: 1; transform: scale(1); }
-    }
+    /* ========== REDES SOCIALES (CONTACTO) ========== */
+    .social-container { display: flex; gap: 12px; margin-top: 10px; margin-bottom: 40px; }
+    .social-btn { flex: 1; background: var(--card); border-radius: var(--radius-md); padding: 16px 8px; text-align: center; text-decoration: none; color: var(--text-main); font-size: 12px; font-weight: 600; box-shadow: 0 2px 8px rgba(0,0,0,0.04); display: flex; flex-direction: column; align-items: center; gap: 8px; transition: transform 0.1s; }
+    .social-btn:active { transform: scale(0.95); }
+    .social-btn svg { width: 24px; height: 24px; }
+    .c-wa { color: #25D366; } .c-fb { color: #1877F2; } .c-web { color: var(--tint); }
 
     /* ========== BOTONES Y NAVEGACIÓN ========== */
     .btn-primary { width: 100%; padding: 16px; background: var(--tint); color: white; border: none; border-radius: var(--radius-md); font-size: 17px; font-weight: 600; cursor: pointer; transition: transform 0.1s; }
@@ -157,7 +117,11 @@
 
   <div id="auth-screen">
     <div class="auth-card">
-      <div class="auth-logo"><svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/></svg></div>
+      <div class="auth-logo">
+        <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/>
+        </svg>
+      </div>
       <h1 class="auth-title">AguaBol</h1>
       <p class="auth-subtitle" id="auth-instruction">Ingresa tu WhatsApp para acceder a tu historial y pedidos.</p>
       <input type="tel" id="auth-phone" class="auth-input" placeholder="Número de teléfono">
@@ -180,587 +144,247 @@
     </div>
 
     <div id="screen-pedido" class="screen active">
-      
-      <div id="tracking-card">
-        <div style="position: relative;">
-          <div class="live-status">
-            <div class="live-dot"></div> 
-            <span style="font-size: 14px; font-weight: 600;">Repartidor en camino</span>
-          </div>
-          <div id="mapa-cliente"></div>
-        </div>
-        
-        <div style="padding: 20px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-            <div>
-              <p style="font-size: 18px; font-weight: 700; letter-spacing: -0.5px;">Tu pedido se acerca</p>
-              <p style="font-size: 14px; color: var(--text-muted); margin-top: 2px;">El repartidor está en ruta hacia ti.</p>
-            </div>
-            <div style="background: rgba(14, 165, 233, 0.1); color: var(--tint); padding: 8px 12px; border-radius: 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
-              En vivo
-            </div>
-          </div>
-          
-          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; padding: 16px; display: flex; gap: 14px; align-items: flex-start;">
-            <div style="background: white; width: 40px; height: 40px; border-radius: 12px; display: flex; justify-content: center; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.06); flex-shrink: 0;">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--tint)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                <circle cx="12" cy="10" r="3"></circle>
-              </svg>
-            </div>
-            <div style="flex: 1;">
-              <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 4px;">Entregar en</div>
-              <div id="tracking-dir-escrita" style="font-size: 15px; font-weight: 600; color: var(--text-main); line-height: 1.4; margin-bottom: 8px; word-break: break-word;">
-                Cargando destino...
-              </div>
-              <div id="tracking-coords" style="display: none; align-items: center; gap: 4px; background: #e2e8f0; color: #475569; font-size: 12px; font-weight: 700; padding: 4px 8px; border-radius: 6px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="2"/></svg>
-                <span id="txt-coords"></span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <div id="catalogo-container">
         <div class="list-header">CATÁLOGO DE PRODUCTOS</div>
         <div class="ios-list">
           <div class="list-row">
-            <div class="row-info"><div class="row-icon min"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/></svg></div><div><div class="row-title">Agua Mineral</div><div class="row-desc" id="p-min">Bs 8.50</div></div></div>
-            <div class="stepper"><button class="stepper-btn" onclick="cambiarCant('min',-1)">−</button><div class="stepper-val" id="qty-min">1</div><button class="stepper-btn" onclick="cambiarCant('min',1)">+</button></div>
+            <div class="row-info">
+              <div class="row-icon min">A</div>
+              <div>
+                <div class="row-title">Agua Mineral</div>
+                <div class="row-desc">Recarga botellón 20L</div>
+              </div>
+            </div>
+            <div class="stepper">
+              <button class="stepper-btn" onclick="changeQty('qty-min', -1)">-</button>
+              <div class="stepper-val" id="qty-min">1</div>
+              <button class="stepper-btn" onclick="changeQty('qty-min', 1)">+</button>
+            </div>
           </div>
-          <div class="list-row">
-            <div class="row-info"><div class="row-icon sab"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/></svg></div><div><div class="row-title">Saborizada</div><div class="row-desc" id="p-sab">Bs 10.00</div></div></div>
-            <div class="stepper"><button class="stepper-btn" onclick="cambiarCant('sab',-1)">−</button><div class="stepper-val" id="qty-sab">0</div><button class="stepper-btn" onclick="cambiarCant('sab',1)">+</button></div>
+          <div class="list-row" style="flex-direction: column; align-items: stretch;">
+            <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+              <div class="row-info">
+                <div class="row-icon sab">S</div>
+                <div>
+                  <div class="row-title">Agua Saborizada</div>
+                  <div class="row-desc">Botellón 20L preparado</div>
+                </div>
+              </div>
+              <div class="stepper">
+                <button class="stepper-btn" onclick="restarSabor()">-</button>
+                <div class="stepper-val" id="qty-sab">0</div>
+                <button class="stepper-btn" onclick="abrirModalSabores()">+</button>
+              </div>
+            </div>
+            <div id="sabores-elegidos-texto" class="sabor-lista-text" style="margin-top: 8px; margin-left: 46px;"></div>
           </div>
-        </div>
-
-        <div class="list-header">ENTREGAR EN</div>
-        <div class="action-row" style="align-items: flex-start; flex-direction: column; gap: 12px;">
-          <p id="resumen-direccion" style="font-size:15px; color:var(--text-muted); line-height: 1.4;"></p>
-          <button class="btn-primary btn-secondary" id="btn-gps" onclick="obtenerGPS()">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align: middle; margin-right: 6px;"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg> Compartir GPS exacto
-          </button>
-        </div>
-
-        <div class="checkout-bar" id="checkout-bar">
-          <div><div style="font-size:12px; font-weight:500; color:var(--text-muted);">Total estimado</div><div id="total-pago" style="font-size:22px; font-weight:700; color:var(--text-main);">Bs 8.50</div></div>
-          <button class="btn-primary" style="width: auto; padding: 14px 28px; margin: 0; box-shadow: 0 4px 12px rgba(14,165,233,0.3);" onclick="enviarPedido()">Confirmar</button>
         </div>
       </div>
-    </div>
-
-    <div id="screen-lealtad" class="screen">
-      <div class="wallet-card">
-        <div style="display: flex; justify-content: space-between; align-items: center; position: relative; z-index: 2;">
-          <div><div style="font-size: 13px; opacity: 0.8; text-transform: uppercase; letter-spacing: 1px;">Club</div><div style="font-size: 24px; font-weight: 700;">AguaBol</div></div>
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-        </div>
-        <div class="stamps-grid" id="stamps-container"></div>
-        <div id="status-lealtad" style="margin-top: 24px; text-align: center; font-size: 15px; font-weight: 500; background: rgba(255,255,255,0.1); padding: 12px; border-radius: 12px; position: relative; z-index: 2; transition: all 0.3s ease;">Cargando...</div>
-      </div>
-      <p style="text-align: center; font-size: 13px; color: var(--text-muted); margin-top: 16px;">Acumula 10 compras y el próximo botellón corre por nuestra cuenta.</p>
     </div>
 
     <div id="screen-perfil" class="screen">
       <div class="list-header">DATOS PERSONALES</div>
       <div class="ios-list" style="margin-bottom: 12px;">
-        <div class="list-row"><input type="text" id="perfil-nombre" class="auth-input" style="margin:0; padding:0; background:transparent; box-shadow:none; font-size:17px;"></div>
-        <div class="list-row"><input type="text" id="perfil-direccion" class="auth-input" style="margin:0; padding:0; background:transparent; box-shadow:none; font-size:17px;"></div>
+        <div class="list-row"><input type="text" id="perfil-nombre" class="auth-input" style="margin:0; padding:0; background:transparent; box-shadow:none;" placeholder="Nombre"></div>
+        <div class="list-row"><input type="text" id="perfil-dir" class="auth-input" style="margin:0; padding:0; background:transparent; box-shadow:none;" placeholder="Dirección"></div>
       </div>
-      <button class="btn-primary btn-secondary" onclick="actualizarPerfil()">Guardar Cambios</button>
-      <button class="btn-primary btn-destructive" onclick="cerrarSesion()">Cerrar Sesión</button>
-      <div style="text-align: center; margin-top: 40px; font-size: 12px; color: var(--text-muted);">AguaBol v2.0<br>Desarrollado para iOS y Android</div>
+      <button class="btn-primary" onclick="guardarPerfil()" style="margin-bottom: 30px;">Actualizar Datos</button>
+
+      <div class="list-header" style="margin-top: 24px;">CONTACTO OFICIAL</div>
+      <div class="social-container">
+        <a href="https://wa.me/584241234567" target="_blank" class="social-btn">
+          <svg class="c-wa" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+          </svg>
+          WhatsApp
+        </a>
+        <a href="https://facebook.com/tupagina" target="_blank" class="social-btn">
+          <svg class="c-fb" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path>
+          </svg>
+          Facebook
+        </a>
+        <a href="https://aguabol.com" target="_blank" class="social-btn">
+          <svg class="c-web" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line>
+            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+          </svg>
+          Sitio Web
+        </a>
+      </div>
+
+      <button class="btn-destructive" onclick="cerrarSesion()" style="width: 100%; border-radius: var(--radius-md); padding: 16px; font-weight: 600; border: none; font-size: 16px; margin-bottom: 50px;">Cerrar Sesión</button>
     </div>
 
     <div class="tab-bar">
-      <div class="tab-item active" onclick="switchTab('pedido', 'Inicio')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> Inicio</div>
-      <div class="tab-item" onclick="switchTab('lealtad', 'Regalo')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 12v10H4V12"/><path d="M2 7h20v5H2z"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg> Club</div>
-      <div class="tab-item" onclick="switchTab('perfil', 'Ajustes')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> Perfil</div>
+      <div class="tab-item active" onclick="switchTab('pedido', 'Inicio')">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+        Inicio
+      </div>
+      <div class="tab-item" onclick="switchTab('perfil', 'Mi Perfil')">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+        Perfil
+      </div>
     </div>
+  </div>
 
+  <div id="modal-sabores" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title">Elige un Sabor</div>
+        <button onclick="cerrarModalSabores()" style="background: none; border: none; font-size: 24px; color: var(--text-muted); cursor: pointer;">&times;</button>
+      </div>
+      <div class="sabores-grid" id="grid-sabores">
+        <button class="sabor-btn" onclick="seleccionarSabor('Fresa', this)">Fresa</button>
+        <button class="sabor-btn" onclick="seleccionarSabor('Limón', this)">Limón</button>
+        <button class="sabor-btn" onclick="seleccionarSabor('Naranja', this)">Naranja</button>
+        <button class="sabor-btn" onclick="seleccionarSabor('Parchita', this)">Parchita</button>
+        <button class="sabor-btn" onclick="seleccionarSabor('Piña', this)">Piña</button>
+        <button class="sabor-btn" onclick="seleccionarSabor('Mora', this)">Mora</button>
+        <button class="sabor-btn" onclick="seleccionarSabor('Manzana', this)">Manzana</button>
+        <button class="sabor-btn" onclick="seleccionarSabor('Uva', this)">Uva</button>
+      </div>
+      <button class="btn-primary" onclick="confirmarSabor()">Confirmar Sabor</button>
+    </div>
   </div>
 
   <script>
-    // CREDENCIALES SUPABASE
-    const db = window.supabase.createClient('https://aiipxfssbnpfpefbbnwm.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFpaXB4ZnNzYm5wZnBlZmJibndtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3MDM2MzIsImV4cCI6MjA5NDI3OTYzMn0.CS_e43iE4ClLgqQULrm4mNm3ji71WQZQcdBNfg6lTHg');
-    
-    let usuarioActual = null, coordsGPS = null, pMin = 8.5, pSab = 10, esRegistro = false;
-    let mapa = null, markRep = null, markCasa = null, rutaLayer = null, lineaGris = null, historialGPS = []; 
+    // ===== 1. CREDENCIALES SUPABASE (¡Pega tus Keys aquí!) =====
+    const SUPABASE_URL = 'URL_AQUI';
+    const SUPABASE_KEY = 'KEY_AQUI';
+    const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    const dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-    document.getElementById('header-fecha').innerText = dias[new Date().getDay()].toUpperCase();
+    // ===== 2. VARIABLES GLOBALES =====
+    let usuarioActual = null;
+    let listaSaboresSeleccionados = [];
+    let saborTemporalmenteSeleccionado = null;
 
-    // === GENERADOR DE IDs ===
-    function generarUUID() {
-      if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-        return crypto.randomUUID();
-      }
-      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-        var r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
-        return v.toString(16);
-      });
-    }
-
-    async function checkAuth() {
-      const id = localStorage.getItem('aguabol_id');
-      if (id) {
-        const { data: user } = await db.from('clientes').select('*').eq('id', id).single();
-        if (user) { usuarioActual = user; iniciarApp(); return; }
-      }
-    }
-
-    // === LOGIN PROTEGIDO ===
-    async function procesarAcceso() {
-      const tel = document.getElementById('auth-phone').value.replace(/\D/g, ''); 
-      if (tel.length < 10) return showToast("Número inválido", true);
-      
-      const btn = document.getElementById('btn-auth');
-      btn.disabled = true; btn.innerText = "Cargando...";
-
-      try {
-        if (!esRegistro) {
-          const { data: user, error } = await db.from('clientes').select('*').eq('telefono', tel).maybeSingle();
-          if (error) throw error;
-
-          if (user) { 
-            usuarioActual = user; guardarLocal(user); iniciarApp(); 
-          } else { 
-            esRegistro = true; 
-            document.getElementById('registro-campos').classList.add('visible'); 
-            btn.innerText = "Crear Cuenta"; btn.disabled = false; 
-          }
-        } else {
-          const nom = document.getElementById('auth-name').value.trim();
-          const dir = document.getElementById('auth-address').value.trim();
-          if (!nom) { btn.innerText = "Crear Cuenta"; btn.disabled = false; return showToast("Nombre requerido", true); }
-          
-          const id = generarUUID();
-          const { error } = await db.from('clientes').insert({ id, nombre: nom, telefono: tel, direccion: dir });
-          if (error) throw error;
-
-          usuarioActual = { id, nombre: nom, telefono: tel, direccion: dir };
-          guardarLocal(usuarioActual); iniciarApp();
-        }
-      } catch (err) {
-        console.error("Error en login: ", err);
-        showToast("Error de conexión. Revisa tu internet.", true);
-        btn.innerText = esRegistro ? "Crear Cuenta" : "Continuar";
-        btn.disabled = false;
-      }
-    }
-
-    function guardarLocal(u) {
-      localStorage.setItem('aguabol_id', u.id); localStorage.setItem('aguabol_nombre', u.nombre); localStorage.setItem('aguabol_telefono', u.telefono); localStorage.setItem('aguabol_direccion', u.direccion || '');
-    }
-
-    function iniciarApp() {
-      const inicial = (usuarioActual.nombre && usuarioActual.nombre.length > 0) ? usuarioActual.nombre[0].toUpperCase() : '👤';
-      document.getElementById('header-avatar').innerText = inicial;
-      document.getElementById('resumen-direccion').innerText = usuarioActual.direccion || "Sin dirección asignada.";
-      document.getElementById('perfil-nombre').value = usuarioActual.nombre || '';
-      document.getElementById('perfil-direccion').value = usuarioActual.direccion || '';
-      
-      document.getElementById('auth-screen').classList.add('hidden');
-      setTimeout(() => { document.getElementById('auth-screen').style.display='none'; document.getElementById('main-app').classList.add('visible'); }, 400);
-      
-      cargarPrecios(); chequearPedidoActivo();
-      db.channel('rastreo').on('postgres_changes', { event:'*', schema:'public', table:'pedidos', filter:`cliente_id=eq.${usuarioActual.id}` }, () => chequearPedidoActivo()).subscribe();
-
-      // Escucha de nuevas ventas para actualizar la tarjeta de lealtad en tiempo real
-      db.channel('lealtad').on('postgres_changes', { event:'INSERT', schema:'public', table:'ventas', filter:`cliente_id=eq.${usuarioActual.id}` }, () => {
-        cargarLealtad();
-      }).subscribe();
-            
-      // 👇 ACTIVAMOS LA INSTALACIÓN Y SUBSCRIPCIÓN NATIVA WEB PUSH VAPID AL INICIAR SESIÓN 👇
-      registrarPushCliente();
-    }
-
-    async function cargarPrecios() {
-      const { data } = await db.from('configuracion').select('*').eq('id', 1).single();
-      if (data) { pMin = data.precio_mineral; pSab = data.precio_saborizada; }
-      document.getElementById('p-min').innerText = `Bs ${pMin.toFixed(2)}`;
-      document.getElementById('p-sab').innerText = `Bs ${pSab.toFixed(2)}`;
-      calcularTotal();
-    }
-
-    // === EL CORAZÓN DEL RASTREO Y DISEÑO ===
-    async function chequearPedidoActivo() {
-      if(!usuarioActual) return;
-      const { data: p } = await db.from('pedidos').select('*').eq('cliente_id', usuarioActual.id).in('estado',['pendiente','en_camino']).order('created_at',{ascending:false}).limit(1).maybeSingle();
-      
-      const cat = document.getElementById('catalogo-container'); 
-      const trk = document.getElementById('tracking-card'); 
-      const chk = document.getElementById('checkout-bar');
-
-      if (p && p.estado === 'en_camino') {
-        cat.style.display = 'none'; chk.style.display = 'none'; trk.style.display = 'block';
-        
-        if (!mapa) {
-          mapa = L.map('mapa-cliente', { zoomControl:false, dragging:false }).setView([10.162, -67.999], 14);
-          L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(mapa);
-        }
-        setTimeout(() => mapa.invalidateSize(), 300);
-
-        let latC = null, lngC = null;
-        let dirLimpia = "Dirección no especificada";
-        let coordsCrudas = "";
-
-        if (usuarioActual.direccion) {
-          if (usuarioActual.direccion.includes('| GPS:')) {
-            const partes = usuarioActual.direccion.split('| GPS:');
-            dirLimpia = partes[0].trim(); 
-            const c = partes[1].split(',');
-            latC = parseFloat(c[0]); lngC = parseFloat(c[1]);
-            coordsCrudas = `${latC.toFixed(4)}, ${lngC.toFixed(4)}`;
-            if(!markCasa) markCasa = L.marker([latC, lngC]).addTo(mapa);
-          } else {
-            dirLimpia = usuarioActual.direccion; 
-          }
-        }
-
-        document.getElementById('tracking-dir-escrita').innerText = dirLimpia;
-        const pillCoords = document.getElementById('tracking-coords');
-        if (coordsCrudas) {
-          document.getElementById('txt-coords').innerText = coordsCrudas;
-          pillCoords.style.display = 'inline-flex';
-        } else {
-          pillCoords.style.display = 'none';
-        }
-
-        if (p.ubicacion_chofer) {
-          const c = p.ubicacion_chofer.split(',');
-          const latR = parseFloat(c[0]);
-          const lngR = parseFloat(c[1]);
-
-          const nombreArchivoLogo = 'logo.png'; 
-          const urlLogoPublico = `https://aiipxfssbnpfpefbbnwm.supabase.co/storage/v1/object/public/assets/${nombreArchivoLogo}`;
-
-          const iconoNegocio = L.divIcon({
-            html: `<div style="width:46px; height:46px; border-radius:50%; border:3px solid white; box-shadow:0 4px 12px rgba(0,0,0,0.3); overflow:hidden; background:white; display:flex; justify-content:center; align-items:center;">
-                     <img src="${urlLogoPublico}" style="width:100%; height:100%; object-fit:cover;" onerror="this.src='https://cdn-icons-png.flaticon.com/512/2769/2769339.png'">
-                   </div>`,
-            className: '',
-            iconSize: [46, 46],
-            iconAnchor: [23, 23]
-          });
-
-          if(!markRep) {
-            markRep = L.marker([latR, lngR], { icon: iconoNegocio }).addTo(mapa);
-          } else {
-            markRep.setLatLng([latR, lngR]);
-          }
-          mapa.panTo([latR, lngR]);
-
-          if (!rutaLayer && latC && lngC) {
-            try {
-              const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${lngR},${latR};${lngC},${latC}?geometries=geojson`);
-              const data = await res.json();
-              if (data.routes && data.routes[0]) {
-                rutaLayer = L.geoJSON(data.routes[0].geometry, { style: { color: '#0ea5e9', weight: 5, opacity: 0.8 } }).addTo(mapa);
-                mapa.fitBounds(rutaLayer.getBounds(), { padding: [40, 40] });
-              }
-            } catch(e) { console.log("Servidor de rutas ocupado"); }
-          }
-
-          historialGPS.push([latR, lngR]);
-          if (!lineaGris) {
-            lineaGris = L.polyline(historialGPS, { color: '#9ca3af', weight: 6, opacity: 1 }).addTo(mapa);
-          } else {
-            lineaGris.setLatLngs(historialGPS);
-          }
-        }
-
-      } else {
-        cat.style.display = 'block'; chk.style.display = 'flex'; trk.style.display = 'none';
-        if (mapa) {
-           mapa.remove(); 
-           mapa = null; markRep = null; markCasa = null; 
-           rutaLayer = null; lineaGris = null; historialGPS = [];
-        }
-      }
-    }
-
+    // ===== 3. NAVEGACIÓN Y TABS =====
     function switchTab(id, titulo) {
       document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
       document.getElementById('screen-' + id).classList.add('active');
       document.getElementById('header-titulo').innerText = titulo;
-      document.querySelectorAll('.tab-item').forEach((t, i) => t.classList.toggle('active', (id==='pedido'&&i===0)||(id==='lealtad'&&i===1)||(id==='perfil'&&i===2)));
       
-      const chk = document.getElementById('checkout-bar');
-      chk.style.display = (id === 'pedido' && document.getElementById('tracking-card').style.display !== 'block') ? 'flex' : 'none';
-
-      if(id === 'lealtad') cargarLealtad();
+      document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+      event.currentTarget.classList.add('active');
     }
 
-    function cambiarCant(t, d) {
-      const el = document.getElementById('qty-'+t);
-      el.innerText = Math.max(0, parseInt(el.innerText) + d);
-      calcularTotal();
+    // ===== 4. LÓGICA DE SABORES =====
+    function abrirModalSabores() {
+      document.getElementById('modal-sabores').classList.add('visible');
+      saborTemporalmenteSeleccionado = null;
+      document.querySelectorAll('.sabor-btn').forEach(btn => btn.classList.remove('active'));
     }
 
-    function calcularTotal() {
-      const t = (parseInt(document.getElementById('qty-min').innerText)*pMin) + (parseInt(document.getElementById('qty-sab').innerText)*pSab);
-      document.getElementById('total-pago').innerText = `Bs ${t.toFixed(2)}`;
+    function cerrarModalSabores() {
+      document.getElementById('modal-sabores').classList.remove('visible');
     }
 
-    async function obtenerGPS() {
-      if (!navigator.geolocation) {
-        return showToast("Tu dispositivo no soporta GPS", true);
+    function seleccionarSabor(sabor, elemento) {
+      saborTemporalmenteSeleccionado = sabor;
+      document.querySelectorAll('.sabor-btn').forEach(btn => btn.classList.remove('active'));
+      elemento.classList.add('active');
+    }
+
+    function confirmarSabor() {
+      if (!saborTemporalmenteSeleccionado) {
+        showToast("Por favor selecciona un sabor");
+        return;
       }
       
-      const btn = document.getElementById('btn-gps'); 
-      btn.innerHTML = "⏳ Conectando con satélites...";
-      btn.style.pointerEvents = "none";
+      listaSaboresSeleccionados.push(saborTemporalmenteSeleccionado);
       
-      // === CONFIGURACIÓN ULTRA ESTRICTA DEL GPS ===
-      const opcionesGPS = {
-        enableHighAccuracy: true, // Exige usar el chip GPS real
-        timeout: 15000,           // Le da 15 segundos para fijar los satélites
-        maximumAge: 0             // Prohíbe usar ubicaciones viejas guardadas en la memoria
-      };
+      let qtySab = document.getElementById('qty-sab');
+      if (qtySab) {
+         let actual = parseInt(qtySab.innerText) || 0;
+         qtySab.innerText = actual + 1;
+      }
+      
+      actualizarTextoSabores();
+      cerrarModalSabores();
+      showToast(`Sabor ${saborTemporalmenteSeleccionado} agregado`);
+    }
 
-      navigator.geolocation.getCurrentPosition(async (pos) => {
-        const lat = pos.coords.latitude;
-        const lng = pos.coords.longitude;
-        coordsGPS = `${lat.toFixed(5)},${lng.toFixed(5)}`;
-        
-        try {
-          // === MAGIA: FORZAR ZOOM A NIVEL DE CALLE (zoom=18) ===
-          const urlAPI = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`;
-          const res = await fetch(urlAPI);
-          const data = await res.json();
-          
-          let direccionTraducida = "Ubicación exacta detectada";
-          
-          if (data && data.address) {
-            // Buscamos específicamente el nombre de la calle (road)
-            const calle = data.address.road || data.address.pedestrian || '';
-            const numero = data.address.house_number || '';
-            const barrio = data.address.suburb || data.address.neighbourhood || '';
-            
-            let partes = [];
-            
-            // Si la base de datos conoce la calle, la ponemos primero
-            if (calle) {
-               partes.push(numero ? `${calle} #${numero}` : calle);
-            }
-            
-            // Luego agregamos el sector (ej. Lomas del Funval)
-            if (barrio) partes.push(barrio);
-            
-            if (partes.length > 0) {
-              direccionTraducida = partes.join(', ');
-            } else if (data.display_name) {
-              // Plan B
-              direccionTraducida = data.display_name.split(',').slice(0, 3).join(',');
-            }
-          }
-          
-          const direccionFinal = `${direccionTraducida} | GPS: ${coordsGPS}`;
-          
-          const { error } = await db.from('clientes')
-            .update({ direccion: direccionFinal })
-            .eq('id', usuarioActual.id);
-            
-          if (error) throw error;
-          
-          usuarioActual.direccion = direccionFinal;
-          guardarLocal(usuarioActual);
-          
-          document.getElementById('resumen-direccion').innerText = direccionFinal;
-          document.getElementById('perfil-direccion').value = direccionFinal;
-          
-          btn.innerHTML = "✅ Ubicación Exacta Guardada"; 
-          btn.style.background = "#DCFCE7"; 
-          btn.style.color = "#16A34A";
-          showToast("Ubicación con precisión de calle guardada");
-          
-        } catch (error) {
-          console.error("Error GPS:", error);
-          const fallbackDir = `Mi Ubicación | GPS: ${coordsGPS}`;
-          await db.from('clientes').update({ direccion: fallbackDir }).eq('id', usuarioActual.id);
-          usuarioActual.direccion = fallbackDir; guardarLocal(usuarioActual);
-          document.getElementById('resumen-direccion').innerText = fallbackDir;
-          btn.innerHTML = "✅ Coordenadas Guardadas"; 
-        } finally {
-          btn.style.pointerEvents = "auto";
+    function restarSabor() {
+      let qtySab = document.getElementById('qty-sab');
+      let actual = parseInt(qtySab.innerText) || 0;
+      
+      if (actual > 0 && listaSaboresSeleccionados.length > 0) {
+        listaSaboresSeleccionados.pop();
+        qtySab.innerText = actual - 1;
+        actualizarTextoSabores();
+      }
+    }
+
+    function actualizarTextoSabores() {
+      let contenedorTexto = document.getElementById('sabores-elegidos-texto');
+      if (contenedorTexto) {
+        if (listaSaboresSeleccionados.length > 0) {
+          contenedorTexto.innerText = "Sabores: " + listaSaboresSeleccionados.join(', ');
+        } else {
+          contenedorTexto.innerText = "";
         }
-        
-      }, (err) => { 
-        btn.innerHTML = "⚠️ Fallo al leer GPS"; 
-        btn.style.pointerEvents = "auto";
-        showToast("Error: Revisa que tu GPS esté encendido", true);
-      }, opcionesGPS);
-    }
-
-    async function enviarPedido() {
-      const m = parseInt(document.getElementById('qty-min').innerText);
-      const s = parseInt(document.getElementById('qty-sab').innerText);
-      if (m+s === 0) return showToast("Añade productos al catálogo", true);
-      
-      let dir = usuarioActual.direccion || "Sin dirección";
-      
-      const { error } = await db.from('pedidos').insert({ 
-        id: generarUUID(), 
-        cliente_id: usuarioActual.id, 
-        items: { mineral: m, saborizada: s }, 
-        monto_total: (m*pMin + s*pSab), 
-        estado: 'pendiente' 
-      });
-      
-      if (!error) { 
-        showToast("¡Pedido confirmed!"); 
-        document.getElementById('qty-min').innerText="1"; 
-        document.getElementById('qty-sab').innerText="0"; 
-        calcularTotal(); 
-        chequearPedidoActivo(); 
       }
     }
 
-    async function cargarLealtad() {
-      const { data: v } = await db.from('ventas').select('mineral, saborizada').eq('cliente_id', usuarioActual.id);
-      let tot = 0; v?.forEach(x => tot += (x.mineral+x.saborizada));
-      
-      let pts = tot % 10;
-      if (pts === 0 && tot > 0) { pts = 10; }
-      
-      const faltan = 10 - pts;
-      const lblStatus = document.getElementById('status-lealtad');
-      
-      if (faltan === 0) {
-        lblStatus.innerHTML = "¡Felicidades! Tienes un botellón GRATIS 🎉";
-        lblStatus.style.background = "rgba(255, 149, 0, 0.2)";
-        lblStatus.style.color = "var(--gold)";
-      } else {
-        lblStatus.innerHTML = `Te faltan ${faltan} sellos para tu regalo`;
-        lblStatus.style.background = "rgba(255,255,255,0.1)";
-        lblStatus.style.color = "white";
-      }
-      
-      const cont = document.getElementById('stamps-container'); 
-      cont.innerHTML = '';
-      
-      for (let i = 1; i <= 10; i++) {
-        const isFilled = i <= pts;
-        const isFree = i === 10;
-        const delay = isFilled ? (i * 0.12) : 0; 
-        
-        let clases = 'stamp-spot';
-        if (isFree) clases += ' free';
-        if (isFilled) clases += ' filled';
-
-        cont.innerHTML += `
-          <div class="${clases}" style="animation-delay: ${delay}s">
-            <svg viewBox="0 0 24 24" width="22" height="22" fill="white" style="animation-delay: ${delay}s">
-              <path d="M12 21.5c-3.3 0-6-2.6-6-5.8 0-3.3 3.8-9.1 5.2-11.2.3-.5 1.1-.5 1.5 0 1.4 2 5.3 7.9 5.3 11.2 0 3.2-2.7 5.8-6 5.8z"/>
-            </svg>
-          </div>`;
-      }
+    function changeQty(id, delta) {
+      let el = document.getElementById(id);
+      let v = parseInt(el.innerText) + delta;
+      if (v < 0) v = 0;
+      el.innerText = v;
     }
 
-    async function actualizarPerfil() {
-      const n = document.getElementById('perfil-nombre').value; const d = document.getElementById('perfil-direccion').value;
-      await db.from('clientes').update({ nombre: n, direccion: d }).eq('id', usuarioActual.id);
-      usuarioActual.nombre = n; usuarioActual.direccion = d; guardarLocal(usuarioActual);
-      document.getElementById('resumen-direccion').innerText = d; showToast("Datos guardados con éxito");
-    }
-
-    function cerrarSesion() { localStorage.clear(); window.location.reload(); }
-    function showToast(m, err=false) { const t = document.getElementById('toast'); document.getElementById('toast-msg').innerText = m; t.style.display='flex'; setTimeout(()=>t.style.display='none', 3000); }
-
-    // === FUNCIÓN AUXILIAR PARA TRANSFORMAR LA CLAVE VAPID PÚBLICA ===
+    // ===== 5. LÓGICA PUSH WEB (SERVICE WORKERS) =====
     function urlBase64ToUint8Array(base64String) {
       const padding = '='.repeat((4 - base64String.length % 4) % 4);
-      const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+      const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
       const rawData = window.atob(base64);
       const outputArray = new Uint8Array(rawData.length);
-      for (let i = 0; i < rawData.length; ++i) {
-        outputArray[i] = rawData.charCodeAt(i);
-      }
+      for (let i = 0; i < rawData.length; ++i) { outputArray[i] = rawData.charCodeAt(i); }
       return outputArray;
     }
 
+    async function registrarPushWeb() {
+      try {
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+        
+        let permiso = await Notification.requestPermission();
+        if (permiso !== 'granted') return;
 
-// ========== REGISTRO DE NOTIFICACIONES CON TOASTS DE DEPURACIÓN ==========
-async function registrarPushCliente() {
-  try {
-    showToast("⚙️ Verificando sistema...");
+        let registration = await navigator.serviceWorker.register('/sw.js');
+        let subscription = await registration.pushManager.getSubscription();
+        
+        if (!subscription) {
+          const publicVapidKey = 'BDSv-QbrjeZnh4uWUGgSZ09GEb5Pk6jVAeWGlSieuMQzORmfhc_0K3cpp99TumQMOmF5ggY7lI0lgD0tX7-HJoQ';
+          subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(publicVapidKey)
+          });
+        }
 
-    // 1. Verificamos si la conexión es segura (Obligatorio para Push)
-    if (!window.isSecureContext) {
-      return showToast("❌ Error: Requiere conexión HTTPS", true);
-    }
-
-    // 2. Verificamos si está en iOS sin "Agregar a inicio"
-    if (!('Notification' in window)) {
-      return showToast("❌ iOS: Debes 'Agregar a inicio' primero", true);
-    }
-
-    // 3. Verificamos soporte general (Evita navegadores de WhatsApp/Telegram)
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-      return showToast("❌ Ábrelo en Chrome/Safari normal", true);
-    }
-
-    showToast("⏳ Solicitando permisos...");
-    let permStatus = Notification.permission;
-    
-    if (permStatus === 'default') {
-      permStatus = await Notification.requestPermission();
-    }
-    
-    if (permStatus !== 'granted') {
-      return showToast("❌ Permiso denegado por ti", true); 
-    }
-
-    showToast("✅ Registrando conexión oculta...");
-    const registration = await navigator.serviceWorker.register('/sw.js');
-    
-    showToast("⏳ Creando llave de seguridad...");
-    let subscription = await registration.pushManager.getSubscription();
-    
-    if (!subscription) {
-      const publicVapidKey = 'BDSv-QbrjeZnh4uWUGgSZ09GEb5Pk6jVAeWGlSieuMQzORmfhc_0K3cpp99TumQMOmF5ggY7lI0lgD0tX7-HJoQ';
-      subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(publicVapidKey)
-      });
-    }
-
-    if (usuarioActual && usuarioActual.id) {
-      showToast("⏳ Guardando en base de datos...");
-      
-      const { error } = await db.from('dispositivos').upsert({ 
-        user_id: usuarioActual.id, 
-        fcm_token: JSON.stringify(subscription), 
-        plataforma: 'web', 
-        updated_at: new Date().toISOString() 
-      }, { onConflict: 'user_id' });
-      
-      if(!error) {
-        showToast("🚀 ¡Push listo y conectado!");
-      } else {
-        showToast("❌ Error BD: " + error.message, true);
+        if (usuarioActual && usuarioActual.id) {
+          const { error } = await db.from('dispositivos').upsert({ 
+            user_id: usuarioActual.id, 
+            fcm_token: JSON.stringify(subscription), 
+            plataforma: 'web', 
+            updated_at: new Date().toISOString() 
+          }, { onConflict: 'user_id' });
+          
+          if(!error) console.log("Push listo");
+        }
+      } catch (error) {
+        console.error("Error Push Web:", error);
       }
     }
-  } catch (error) {
-    showToast("❌ Error: " + error.message, true);
-  }
-}
 
-
-// Escuchamos los mensajes que envíe el Service Worker para depurar
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.addEventListener('message', event => {
-    if (event.data && event.data.type === 'PUSH_DEBUG') {
-      showToast("🔔 " + event.data.mensaje);
+    // ===== 6. UTILIDADES =====
+    function showToast(msg, isError=false) {
+      let t = document.getElementById('toast');
+      document.getElementById('toast-msg').innerText = msg;
+      t.style.background = isError ? 'rgba(255,59,48,0.9)' : 'rgba(0,0,0,0.8)';
+      t.style.display = 'flex';
+      setTimeout(() => t.style.display='none', 3000);
     }
-  });
-}
-
-    
-
-    document.addEventListener('DOMContentLoaded', checkAuth);
   </script>
 </body>
 </html>
